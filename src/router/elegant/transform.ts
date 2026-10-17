@@ -241,6 +241,9 @@ const routeMap: RouteMap = {
   "pro-naive_table": "/pro-naive/table",
   "pro-naive_table_remote": "/pro-naive/table/remote",
   "pro-naive_table_row-edit": "/pro-naive/table/row-edit",
+  "project-manage": "/project-manage",
+  "project-manage_bug-manage": "/project-manage/bug-manage",
+  "project-manage_bug-manage_failed-bug": "/project-manage/bug-manage/failed-bug",
   "user-center": "/user-center"
 };
 

@@ -621,6 +621,25 @@ declare namespace App {
             triggerAllRequest: string;
           };
         };
+        projectManage: {
+          failedBug: {
+            bugList: string;
+            bugId: string;
+            bugTitle: string;
+            bugCurrentStatus: string;
+            bugCreateTime: string;
+            bugLastResolver: string;
+            bugQa: string;
+            review: string;
+            projectId: string;
+            testFailDate: string;
+            bugReviewStatus: string;
+            reviewStatus: {
+              reviewed: string;
+              notReviewed: string;
+            };
+          };
+        };
         proNaive: {
           form: {
             basic: {

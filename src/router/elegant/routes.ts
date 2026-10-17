@@ -692,6 +692,36 @@ export const generatedRoutes: GeneratedRoute[] = [
     ]
   },
   {
+    name: 'project-manage',
+    path: '/project-manage',
+    component: 'layout.base',
+    meta: {
+      title: 'project-manage',
+      i18nKey: 'route.project-manage'
+    },
+    children: [
+      {
+        name: 'project-manage_bug-manage',
+        path: '/project-manage/bug-manage',
+        meta: {
+          title: 'project-manage_bug-manage',
+          i18nKey: 'route.project-manage_bug-manage'
+        },
+        children: [
+          {
+            name: 'project-manage_bug-manage_failed-bug',
+            path: '/project-manage/bug-manage/failed-bug',
+            component: 'view.project-manage_bug-manage_failed-bug',
+            meta: {
+              title: 'project-manage_bug-manage_failed-bug',
+              i18nKey: 'route.project-manage_bug-manage_failed-bug'
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
     name: 'user-center',
     path: '/user-center',
     component: 'layout.base$view.user-center',

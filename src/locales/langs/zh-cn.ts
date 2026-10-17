@@ -226,6 +226,9 @@ const local: App.I18n.Schema = {
     500: '服务器错误',
     'iframe-page': '外链页面',
     home: '首页',
+    'project-manage': '项目管理',
+    'project-manage_bug-manage': '缺陷管理',
+    'project-manage_bug-manage_failed-bug': '失败缺陷管理',
     document: '文档',
     document_project: '项目文档',
     'document_project-link': '项目文档(外链)',
@@ -440,6 +443,25 @@ const local: App.I18n.Schema = {
         stopRequest: '停止请求',
         requestCrossComponent: '跨组件触发请求',
         triggerAllRequest: '手动触发所有自动请求'
+      }
+    },
+    projectManage: {
+      failedBug: {
+        bugList: '缺陷列表',
+        bugId: 'Bug ID',
+        bugTitle: 'Bug标题',
+        bugCurrentStatus: '缺陷当前状态',
+        bugCreateTime: '缺陷创建时间',
+        bugLastResolver: '缺陷最后解决人',
+        bugQa: '缺陷QA人员',
+        review: '审阅',
+        projectId: '项目编号',
+        testFailDate: '复测失败日期',
+        bugReviewStatus: '缺陷审阅状态',
+        reviewStatus: {
+          reviewed: '已审阅',
+          notReviewed: '未审阅'
+        }
       }
     },
     proNaive: {

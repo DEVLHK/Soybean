@@ -230,6 +230,9 @@ const local: App.I18n.Schema = {
     500: 'Server Error',
     'iframe-page': 'Iframe',
     home: 'Home',
+    'project-manage': 'Project Management',
+    'project-manage_bug-manage': 'Bug Management',
+    'project-manage_bug-manage_failed-bug': 'Failed Bug Management',
     document: 'Document',
     document_project: 'Project Document',
     'document_project-link': 'Project Document(External Link)',
@@ -444,6 +447,25 @@ const local: App.I18n.Schema = {
         stopRequest: 'Stop Request',
         requestCrossComponent: 'Request Cross Component',
         triggerAllRequest: 'Manually Trigger All Automated Requests'
+      }
+    },
+    projectManage: {
+      failedBug: {
+        bugList: 'Bug List',
+        bugId: 'Bug ID',
+        bugTitle: 'Bug Title',
+        bugCurrentStatus: 'Bug Current Status',
+        bugCreateTime: 'Bug Create Time',
+        bugLastResolver: 'Bug Last Resolver',
+        bugQa: 'Bug QA',
+        review: 'Review',
+        projectId: 'Project ID',
+        testFailDate: 'Test Fail Date',
+        bugReviewStatus: 'Bug Review Status',
+        reviewStatus: {
+          reviewed: 'Reviewed',
+          notReviewed: 'Not reviewed'
+        }
       }
     },
     proNaive: {

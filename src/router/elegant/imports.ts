@@ -62,5 +62,6 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   "pro-naive_form_step": () => import("@/views/pro-naive/form/step/index.vue"),
   "pro-naive_table_remote": () => import("@/views/pro-naive/table/remote/index.vue"),
   "pro-naive_table_row-edit": () => import("@/views/pro-naive/table/row-edit/index.vue"),
+  "project-manage_bug-manage_failed-bug": () => import("@/views/project-manage/bug-manage/failed-bug/index.vue"),
   "user-center": () => import("@/views/user-center/index.vue"),
 };
