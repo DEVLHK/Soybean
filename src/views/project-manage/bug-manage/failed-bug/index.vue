@@ -1,9 +1,10 @@
 <script setup lang="tsx">
 import { computed, ref, toRaw } from 'vue';
 import { NButton, NTag } from 'naive-ui';
+import type { DataTableColumns } from 'naive-ui';
 import { useNDataTable } from 'pro-naive-ui';
 import type { ProDataTableColumns } from 'pro-naive-ui';
-import { fetchGetFailedBugList, fetchReviewBug } from '@/service/api';
+import { fetchGetBugCommentList, fetchGetFailedBugList } from '@/service/api';
 import { $t } from '@/locales';
 import ConfigProvider from '@/views/pro-naive/ConfigProvider.vue';
 
@@ -115,7 +116,7 @@ const columns = computed<ProDataTableColumns<Api.ProjectManage.FailedBugRecord>>
       align: 'center',
       width: 80,
       render: row => (
-        <NButton type="primary" ghost size="small" onClick={() => handleReview(row)}>
+        <NButton type="primary" ghost size="small" onClick={() => handleViewComments(row)}>
           {$t('page.projectManage.failedBug.review')}
         </NButton>
       )
@@ -134,8 +135,7 @@ const searchValues = ref<FailedBugSearchValues>({ ...defaultSearchValues });
 const {
   table: { tableProps },
   pagination,
-  run,
-  refresh
+  run
 } = useNDataTable(({ current, pageSize, filters, sorter }, values) =>
   fetchList({ current, pageSize, filters, sorter }, values)
 );
@@ -155,12 +155,90 @@ const reviewStatusOptions = computed(() => [
   { label: $t('page.projectManage.failedBug.reviewStatus.notReviewed'), value: '2' }
 ]);
 
-async function handleReview(row: Api.ProjectManage.FailedBugRecord) {
-  const { error } = await fetchReviewBug(row.id);
+/** failure reason category dictionary (backend has no dict endpoint, maintained here) */
+const failureReasonCategoryLabels = computed(() => {
+  const map: Record<string, App.I18n.I18nKey> = {
+    1: 'page.projectManage.failedBug.comment.category.1',
+    2: 'page.projectManage.failedBug.comment.category.2',
+    3: 'page.projectManage.failedBug.comment.category.3',
+    4: 'page.projectManage.failedBug.comment.category.4',
+    5: 'page.projectManage.failedBug.comment.category.5',
+    6: 'page.projectManage.failedBug.comment.category.6',
+    7: 'page.projectManage.failedBug.comment.category.7',
+    8: 'page.projectManage.failedBug.comment.category.8',
+    9: 'page.projectManage.failedBug.comment.category.9',
+    10: 'page.projectManage.failedBug.comment.category.10',
+    11: 'page.projectManage.failedBug.comment.category.11'
+  };
+  return Object.fromEntries(Object.entries(map).map(([code, key]) => [code, $t(key)])) as Record<string, string>;
+});
 
+const commentColumns = computed<DataTableColumns<Api.ProjectManage.FailedBugComment>>(() => [
+  {
+    key: 'seqNo',
+    title: $t('page.projectManage.failedBug.comment.seqNo'),
+    align: 'center',
+    width: 64
+  },
+  {
+    key: 'commentDate',
+    title: $t('page.projectManage.failedBug.comment.commentDate'),
+    align: 'center',
+    width: 170
+  },
+  {
+    key: 'commentedBy',
+    title: $t('page.projectManage.failedBug.comment.commentedBy'),
+    align: 'center',
+    width: 110
+  },
+  {
+    key: 'failureReasonCategory',
+    title: $t('page.projectManage.failedBug.comment.failureReasonCategory'),
+    align: 'center',
+    width: 170,
+    render: row => failureReasonCategoryLabels.value[row.failureReasonCategory] ?? row.failureReasonCategory
+  },
+  {
+    key: 'failureReason',
+    title: $t('page.projectManage.failedBug.comment.failureReason'),
+    align: 'left',
+    minWidth: 200
+  },
+  {
+    key: 'isCausedByFixing',
+    title: $t('page.projectManage.failedBug.comment.isCausedByFixing'),
+    align: 'center',
+    width: 110,
+    render: row => (row.isCausedByFixing ? $t('common.yesOrNo.yes') : $t('common.yesOrNo.no'))
+  },
+  {
+    key: 'suggestion',
+    title: $t('page.projectManage.failedBug.comment.suggestion'),
+    align: 'left',
+    minWidth: 180
+  }
+]);
+
+const commentModalVisible = ref(false);
+const commentLoading = ref(false);
+const commentList = ref<Api.ProjectManage.FailedBugComment[]>([]);
+const commentBugId = ref('');
+
+const commentModalTitle = computed(() => `${$t('page.projectManage.failedBug.comment.title')}: ${commentBugId.value}`);
+
+/** open comment modal and load comments of the clicked bug */
+async function handleViewComments(row: Api.ProjectManage.FailedBugRecord) {
+  commentBugId.value = row.bugId;
+  commentList.value = [];
+  commentModalVisible.value = true;
+  commentLoading.value = true;
+
+  const { error, data } = await fetchGetBugCommentList({ projectId: row.projectId, bugId: row.bugId });
+
+  commentLoading.value = false;
   if (!error) {
-    window.$message?.success(`${$t('page.projectManage.failedBug.review')}: ${row.bugId}`);
-    refresh();
+    commentList.value = data?.records ?? [];
   }
 }
 </script>
@@ -238,10 +316,22 @@ async function handleReview(row: Api.ProjectManage.FailedBugRecord) {
         size="small"
         flex-height
         :columns="columns"
-        row-key="id"
+        :row-key="(row: Api.ProjectManage.FailedBugRecord) => `${row.projectId}_${row.bugId}`"
         class="flex-1"
         v-bind="tableProps"
       />
     </div>
+
+    <NModal v-model:show="commentModalVisible" :title="commentModalTitle" preset="card" class="w-1000px">
+      <NDataTable
+        :columns="commentColumns"
+        :data="commentList"
+        :loading="commentLoading"
+        :row-key="(row: Api.ProjectManage.FailedBugComment) => row.seqNo"
+        size="small"
+        max-height="420"
+        class="mb-12px"
+      />
+    </NModal>
   </ConfigProvider>
 </template>

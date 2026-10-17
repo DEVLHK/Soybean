@@ -9,11 +9,21 @@ export function fetchGetFailedBugList(params: Api.ProjectManage.FailedBugSearchP
   });
 }
 
-/** review failed bug */
-export function fetchReviewBug(id: number) {
+/** get failed bug comment list (locate by joint key projectId + bugId) */
+export function fetchGetBugCommentList(params: Pick<Api.ProjectManage.FailedBugRecord, 'projectId' | 'bugId'>) {
+  return request<Api.Common.PaginatingQueryRecord<Api.ProjectManage.FailedBugComment>>({
+    url: '/projectManage/failedBug/getBugCommentList',
+    method: 'get',
+    // comments of one bug are few, fetch all in one page
+    params: { current: 1, pageSize: 100, ...params }
+  });
+}
+
+/** review failed bug (locate by joint key projectId + bugId) */
+export function fetchReviewBug(data: Pick<Api.ProjectManage.FailedBugRecord, 'projectId' | 'bugId'>) {
   return request<null>({
     url: '/projectManage/failedBug/reviewBug',
     method: 'post',
-    data: { id }
+    data
   });
 }

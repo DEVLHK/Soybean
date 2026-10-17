@@ -461,6 +461,29 @@ const local: App.I18n.Schema = {
         reviewStatus: {
           reviewed: '已审阅',
           notReviewed: '未审阅'
+        },
+        comment: {
+          title: '缺陷点评',
+          seqNo: '序号',
+          commentDate: '点评时间',
+          commentedBy: '点评人',
+          failureReasonCategory: '失败原因分类',
+          failureReason: '失败原因',
+          isCausedByFixing: '是否修复引入',
+          suggestion: '改进建议',
+          category: {
+            '1': '没有完整看完所有问题，提出新需求',
+            '2': '没有在UAT环境做QA',
+            '3': 'UI优化非功能性',
+            '4': '不同机型的兼容性',
+            '5': '补充提出其他独立问题',
+            '6': '复测不全面',
+            '7': '问题没有完全修复',
+            '8': '解释性问题',
+            '9': '解释后才第一次真正提出问题',
+            '10': '双方的发版协调',
+            '11': '版本问题'
+          }
         }
       }
     },

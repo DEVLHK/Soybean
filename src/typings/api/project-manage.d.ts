@@ -21,8 +21,6 @@ declare namespace Api {
 
     /** failed bug record */
     interface FailedBugRecord {
-      /** record id (row key & review input) */
-      id: number;
       bugId: string;
       projectId: string;
       bugTitle: string;
@@ -34,6 +32,32 @@ declare namespace Api {
       bugCreateTime: string;
       lastResolver: string;
       qaOwner: string;
+      /** "1" reviewed, "2" not reviewed */
+      reviewStatus: '1' | '2' | null;
+    }
+
+    /** failed bug comment record (failure review comment of a bug) */
+    interface FailedBugComment {
+      projectId: string;
+      bugId: string;
+      /** sequence number within the bug, bigger = newer */
+      seqNo: number;
+      /** test fail date this comment belongs to, "YYYY-MM-DD" */
+      testFailureDate: string;
+      lastResolver: string;
+      qaOwner: string;
+      /** failure reason category code, "1"-"11" */
+      failureReasonCategory: string;
+      failureReason: string;
+      /** whether introduced by fixing another bug */
+      isCausedByFixing: boolean;
+      suggestion: string;
+      /** comment time, "YYYY-MM-DD HH:mm:ss" */
+      commentDate: string;
+      commentedBy: string;
+      reviewer: string;
+      /** review time, "YYYY-MM-DD HH:mm:ss" */
+      reviewDate: string | null;
       /** "1" reviewed, "2" not reviewed */
       reviewStatus: '1' | '2' | null;
     }

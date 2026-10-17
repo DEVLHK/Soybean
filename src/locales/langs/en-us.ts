@@ -465,6 +465,29 @@ const local: App.I18n.Schema = {
         reviewStatus: {
           reviewed: 'Reviewed',
           notReviewed: 'Not reviewed'
+        },
+        comment: {
+          title: 'Bug Comments',
+          seqNo: 'No.',
+          commentDate: 'Comment Time',
+          commentedBy: 'Commenter',
+          failureReasonCategory: 'Failure Category',
+          failureReason: 'Failure Reason',
+          isCausedByFixing: 'Introduced by Fix',
+          suggestion: 'Suggestion',
+          category: {
+            '1': 'New requirements raised before fully reviewing all issues',
+            '2': 'QA not performed in UAT environment',
+            '3': 'Non-functional UI optimization',
+            '4': 'Compatibility across device models',
+            '5': 'Additional independent issues raised',
+            '6': 'Incomplete retest',
+            '7': 'Issue not fully fixed',
+            '8': 'Explanatory issue',
+            '9': 'Issue truly raised only after explanation',
+            '10': 'Release coordination between both sides',
+            '11': 'Version issue'
+          }
         }
       }
     },
