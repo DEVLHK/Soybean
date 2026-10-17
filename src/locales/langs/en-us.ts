@@ -537,6 +537,7 @@ const local: App.I18n.Schema = {
         roleDesc: 'Role Description',
         menuAuth: 'Menu Auth',
         buttonAuth: 'Button Auth',
+        superRoleReadonlyTip: 'R_SUPER is the built-in super role with full permissions, read-only',
         form: {
           roleName: 'Please enter role name',
           roleCode: 'Please enter role code',
@@ -555,6 +556,7 @@ const local: App.I18n.Schema = {
         userEmail: 'Email',
         userStatus: 'User Status',
         userRole: 'User Role',
+        userPassword: 'Initial Password',
         form: {
           userName: 'Please enter user name',
           userGender: 'Please select gender',
@@ -562,7 +564,8 @@ const local: App.I18n.Schema = {
           userPhone: 'Please enter phone number',
           userEmail: 'Please enter email',
           userStatus: 'Please select user status',
-          userRole: 'Please select user role'
+          userRole: 'Please select user role',
+          userPassword: 'Please enter initial password'
         },
         addUser: 'Add User',
         editUser: 'Edit User',

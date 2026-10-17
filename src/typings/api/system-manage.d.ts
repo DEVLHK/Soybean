@@ -135,5 +135,60 @@ declare namespace Api {
       pId: number;
       children?: MenuTree[];
     };
+
+    /** user add params */
+    type UserAddParams = Pick<
+      User,
+      'userName' | 'userGender' | 'nickName' | 'userPhone' | 'userEmail' | 'userRoles' | 'status'
+    > & {
+      /** login password */
+      password: string;
+    };
+
+    /** user update params */
+    type UserUpdateParams = Omit<UserAddParams, 'password'> & Pick<User, 'id'>;
+
+    /** role add/update params */
+    type RoleOperateParams = Pick<Role, 'roleName' | 'roleCode' | 'roleDesc' | 'status'>;
+
+    /** menu add params */
+    type MenuAddParams = Omit<Menu, 'id' | 'createBy' | 'createTime' | 'updateBy' | 'updateTime' | 'children'>;
+
+    /** menu update params */
+    type MenuUpdateParams = MenuAddParams & Pick<Menu, 'id'>;
+
+    /** role menu auth */
+    type RoleMenuAuth = {
+      /** home page route name */
+      home: string;
+      /** checked menu ids */
+      menuIds: number[];
+    };
+
+    /** role menu auth update params */
+    type RoleMenuAuthUpdateParams = RoleMenuAuth & {
+      roleId: number;
+    };
+
+    /** menu with buttons (role button auth tree source) */
+    type RoleButtonMenu = {
+      menuId: number;
+      menuName: string;
+      buttons: MenuButton[];
+    };
+
+    /** role button auth */
+    type RoleButtonAuth = {
+      /** authorized menus which have buttons */
+      menus: RoleButtonMenu[];
+      /** checked button codes */
+      checkedCodes: string[];
+    };
+
+    /** role button auth update params */
+    type RoleButtonAuthUpdateParams = {
+      roleId: number;
+      buttonCodes: string[];
+    };
   }
 }

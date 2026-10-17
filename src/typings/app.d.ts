@@ -720,6 +720,7 @@ declare namespace App {
             editRole: string;
             menuAuth: string;
             buttonAuth: string;
+            superRoleReadonlyTip: string;
           };
           user: {
             title: string;
@@ -730,6 +731,7 @@ declare namespace App {
             userEmail: string;
             userStatus: string;
             userRole: string;
+            userPassword: string;
             form: {
               userName: string;
               userGender: string;
@@ -738,6 +740,7 @@ declare namespace App {
               userEmail: string;
               userStatus: string;
               userRole: string;
+              userPassword: string;
             };
             addUser: string;
             editUser: string;
@@ -874,7 +877,7 @@ declare namespace App {
   /** Service namespace */
   namespace Service {
     /** Other baseURL key */
-    type OtherBaseURLKey = 'demo';
+    type OtherBaseURLKey = 'demo' | 'mock';
 
     interface ServiceConfigItem {
       /** The backend service base url */

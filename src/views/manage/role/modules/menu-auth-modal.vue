@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue';
-import { fetchGetAllPages, fetchGetMenuTree } from '@/service/api';
+import { fetchGetAllPages, fetchGetMenuTree, fetchGetRoleMenuAuth, fetchUpdateRoleMenuAuth } from '@/service/api';
 import { $t } from '@/locales';
 
 defineOptions({
@@ -10,6 +10,8 @@ defineOptions({
 interface Props {
   /** the roleId */
   roleId: number;
+  /** readonly mode for the built-in super role (always full access) */
+  readonly?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -25,18 +27,6 @@ function closeModal() {
 const title = computed(() => $t('common.edit') + $t('page.manage.role.menuAuth'));
 
 const home = shallowRef('');
-
-async function getHome() {
-  console.log(props.roleId);
-
-  home.value = 'home';
-}
-
-async function updateHome(val: string) {
-  // request
-
-  home.value = val;
-}
 
 const pages = shallowRef<string[]>([]);
 
@@ -69,23 +59,31 @@ async function getTree() {
 
 const checks = shallowRef<number[]>([]);
 
+/** echo role menu auth (home + checked menu ids) */
 async function getChecks() {
-  console.log(props.roleId);
-  // request
-  checks.value = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+  const { error, data } = await fetchGetRoleMenuAuth(props.roleId);
+
+  if (!error) {
+    home.value = data.home;
+    checks.value = data.menuIds;
+  }
 }
 
-function handleSubmit() {
-  console.log(checks.value, props.roleId);
-  // request
+async function handleSubmit() {
+  const { error } = await fetchUpdateRoleMenuAuth({
+    roleId: props.roleId,
+    home: home.value,
+    menuIds: checks.value
+  });
 
-  window.$message?.success?.($t('common.modifySuccess'));
+  if (!error) {
+    window.$message?.success?.($t('common.modifySuccess'));
 
-  closeModal();
+    closeModal();
+  }
 }
 
 function init() {
-  getHome();
   getPages();
   getTree();
   getChecks();
@@ -100,15 +98,25 @@ watch(visible, val => {
 
 <template>
   <NModal v-model:show="visible" :title="title" preset="card" class="w-480px">
+    <NAlert v-if="readonly" type="info" class="mb-12px">
+      {{ $t('page.manage.role.superRoleReadonlyTip') }}
+    </NAlert>
     <div class="flex-y-center gap-16px pb-12px">
       <div>{{ $t('page.manage.menu.home') }}</div>
-      <NSelect :value="home" :options="pageSelectOptions" size="small" class="w-160px" @update:value="updateHome" />
+      <NSelect
+        :value="home"
+        :options="pageSelectOptions"
+        size="small"
+        class="w-160px"
+        :disabled="readonly"
+        @update:value="val => (home = val)"
+      />
     </div>
     <NTree
       v-model:checked-keys="checks"
       :data="tree"
       key-field="id"
-      checkable
+      :checkable="!readonly"
       expand-on-click
       virtual-scroll
       block-line
@@ -117,9 +125,9 @@ watch(visible, val => {
     <template #footer>
       <NSpace justify="end">
         <NButton size="small" class="mt-16px" @click="closeModal">
-          {{ $t('common.cancel') }}
+          {{ $t(readonly ? 'common.close' : 'common.cancel') }}
         </NButton>
-        <NButton type="primary" size="small" class="mt-16px" @click="handleSubmit">
+        <NButton v-if="!readonly" type="primary" size="small" class="mt-16px" @click="handleSubmit">
           {{ $t('common.confirm') }}
         </NButton>
       </NSpace>

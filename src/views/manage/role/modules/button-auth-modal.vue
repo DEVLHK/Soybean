@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue';
+import { computed, shallowRef, watch } from 'vue';
+import { fetchGetRoleButtonAuth, fetchUpdateRoleButtonAuth } from '@/service/api';
 import { $t } from '@/locales';
 
 defineOptions({
@@ -9,6 +10,8 @@ defineOptions({
 interface Props {
   /** the roleId */
   roleId: number;
+  /** readonly mode for the built-in super role (always full access) */
+  readonly?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -23,74 +26,79 @@ function closeModal() {
 
 const title = computed(() => $t('common.edit') + $t('page.manage.role.buttonAuth'));
 
-type ButtonConfig = {
-  id: number;
+type ButtonTreeNode = {
+  /** menu id for menu node, button code for button node */
+  key: number | string;
   label: string;
-  code: string;
+  children?: ButtonTreeNode[];
 };
 
-const tree = shallowRef<ButtonConfig[]>([]);
+const tree = shallowRef<ButtonTreeNode[]>([]);
 
-async function getAllButtons() {
-  // request
-  tree.value = [
-    { id: 1, label: 'button1', code: 'code1' },
-    { id: 2, label: 'button2', code: 'code2' },
-    { id: 3, label: 'button3', code: 'code3' },
-    { id: 4, label: 'button4', code: 'code4' },
-    { id: 5, label: 'button5', code: 'code5' },
-    { id: 6, label: 'button6', code: 'code6' },
-    { id: 7, label: 'button7', code: 'code7' },
-    { id: 8, label: 'button8', code: 'code8' },
-    { id: 9, label: 'button9', code: 'code9' },
-    { id: 10, label: 'button10', code: 'code10' }
-  ];
+const checks = shallowRef<Array<string | number>>([]);
+
+/** echo role button auth: authorized menus (with buttons) as tree, checked codes */
+async function getButtonAuth() {
+  const { error, data } = await fetchGetRoleButtonAuth(props.roleId);
+
+  if (!error) {
+    tree.value = data.menus.map(menu => ({
+      key: menu.menuId,
+      label: menu.menuName,
+      children: menu.buttons.map(button => ({
+        key: button.code,
+        label: button.desc || button.code
+      }))
+    }));
+    checks.value = data.checkedCodes;
+  }
 }
 
-const checks = shallowRef<number[]>([]);
+async function handleSubmit() {
+  // menu node keys are numbers, button node keys are string codes
+  const buttonCodes = checks.value.filter((key): key is string => typeof key === 'string');
 
-async function getChecks() {
-  console.log(props.roleId);
-  // request
-  checks.value = [1, 2, 3, 4, 5];
+  const { error } = await fetchUpdateRoleButtonAuth({
+    roleId: props.roleId,
+    buttonCodes
+  });
+
+  if (!error) {
+    window.$message?.success?.($t('common.modifySuccess'));
+
+    closeModal();
+  }
 }
 
-function handleSubmit() {
-  console.log(checks.value, props.roleId);
-  // request
-
-  window.$message?.success?.($t('common.modifySuccess'));
-
-  closeModal();
-}
-
-function init() {
-  getAllButtons();
-  getChecks();
-}
-
-// init
-init();
+watch(visible, val => {
+  if (val) {
+    getButtonAuth();
+  }
+});
 </script>
 
 <template>
   <NModal v-model:show="visible" :title="title" preset="card" class="w-480px">
+    <NAlert v-if="readonly" type="info" class="mb-12px">
+      {{ $t('page.manage.role.superRoleReadonlyTip') }}
+    </NAlert>
     <NTree
       v-model:checked-keys="checks"
       :data="tree"
-      key-field="id"
-      block-line
-      checkable
+      key-field="key"
+      label-field="label"
+      :checkable="!readonly"
       expand-on-click
       virtual-scroll
+      block-line
       class="h-280px"
     />
     <template #footer>
       <NSpace justify="end">
         <NButton size="small" class="mt-16px" @click="closeModal">
-          {{ $t('common.cancel') }}
+          {{ $t(readonly ? 'common.close' : 'common.cancel') }}
         </NButton>
-        <NButton type="primary" size="small" class="mt-16px" @click="handleSubmit">
+        <NButton v-if="!readonly" type="primary" size="small" class="mt-16px" @click="handleSubmit">
           {{ $t('common.confirm') }}
         </NButton>
       </NSpace>

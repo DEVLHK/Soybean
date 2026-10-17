@@ -127,6 +127,34 @@ export const request = createFlatRequest(
   }
 );
 
+/**
+ * mock request
+ *
+ * for APIs that still use the apifox mock service (same response envelope as the main request)
+ */
+export const mockRequest = createFlatRequest(
+  {
+    baseURL: otherBaseURL.mock,
+    headers: {
+      apifoxToken: 'XL299LiMEDZ0H5h3A29PxwQXdMJqWyY2'
+    }
+  },
+  {
+    transform(response: AxiosResponse<App.Service.Response<any>>) {
+      return response.data.data;
+    },
+    isBackendSuccess(response) {
+      return String(response.data.code) === import.meta.env.VITE_SERVICE_SUCCESS_CODE;
+    },
+    async onBackendFail() {
+      return null;
+    },
+    onError(error) {
+      window.$message?.error(error.message);
+    }
+  }
+);
+
 export const demoRequest = createRequest(
   {
     baseURL: otherBaseURL.demo

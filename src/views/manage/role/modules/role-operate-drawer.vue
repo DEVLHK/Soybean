@@ -3,7 +3,9 @@ import { computed, ref, watch } from 'vue';
 import { useBoolean } from '@sa/hooks';
 import { jsonClone } from '@sa/utils';
 import { enableStatusOptions } from '@/constants/business';
+import { fetchAddRole, fetchUpdateRole } from '@/service/api';
 import { $t } from '@/locales';
+import { useAuth } from '@/hooks/business/auth';
 import { useFormRules, useNaiveForm } from '@/hooks/common/form';
 import ButtonAuthModal from './button-auth-modal.vue';
 import MenuAuthModal from './menu-auth-modal.vue';
@@ -33,6 +35,7 @@ const visible = defineModel<boolean>('visible', {
 
 const { formRef, validate, restoreValidation } = useNaiveForm();
 const { defaultRequiredRule } = useFormRules();
+const { hasAuth } = useAuth();
 const { bool: menuAuthVisible, setTrue: openMenuAuthModal } = useBoolean();
 const { bool: buttonAuthVisible, setTrue: openButtonAuthModal } = useBoolean();
 
@@ -69,6 +72,9 @@ const roleId = computed(() => props.rowData?.id || -1);
 
 const isEdit = computed(() => props.operateType === 'edit');
 
+/** R_SUPER is the built-in super role: menu/button auth is always full and read-only */
+const isSuperRole = computed(() => props.rowData?.roleCode === 'R_SUPER');
+
 function handleInitModel() {
   model.value = createDefaultModel();
 
@@ -83,10 +89,16 @@ function closeDrawer() {
 
 async function handleSubmit() {
   await validate();
-  // request
-  window.$message?.success($t('common.updateSuccess'));
-  closeDrawer();
-  emit('submitted');
+
+  const { error } = isEdit.value
+    ? await fetchUpdateRole({ ...model.value, id: props.rowData!.id })
+    : await fetchAddRole(model.value);
+
+  if (!error) {
+    window.$message?.success($t(props.operateType === 'add' ? 'common.addSuccess' : 'common.updateSuccess'));
+    closeDrawer();
+    emit('submitted');
+  }
 }
 
 watch(visible, () => {
@@ -101,26 +113,34 @@ watch(visible, () => {
   <NDrawer v-model:show="visible" display-directive="show" :width="360">
     <NDrawerContent :title="title" :native-scrollbar="false" closable>
       <NForm ref="formRef" :model="model" :rules="rules">
+        <NFormItem :label="$t('page.manage.role.roleCode')" path="roleCode">
+          <NInput
+            v-model:value="model.roleCode"
+            :disabled="isEdit"
+            :placeholder="$t('page.manage.role.form.roleCode')"
+          />
+        </NFormItem>
         <NFormItem :label="$t('page.manage.role.roleName')" path="roleName">
           <NInput v-model:value="model.roleName" :placeholder="$t('page.manage.role.form.roleName')" />
-        </NFormItem>
-        <NFormItem :label="$t('page.manage.role.roleCode')" path="roleCode">
-          <NInput v-model:value="model.roleCode" :placeholder="$t('page.manage.role.form.roleCode')" />
-        </NFormItem>
-        <NFormItem :label="$t('page.manage.role.roleStatus')" path="status">
-          <NRadioGroup v-model:value="model.status">
-            <NRadio v-for="item in enableStatusOptions" :key="item.value" :value="item.value" :label="$t(item.label)" />
-          </NRadioGroup>
         </NFormItem>
         <NFormItem :label="$t('page.manage.role.roleDesc')" path="roleDesc">
           <NInput v-model:value="model.roleDesc" :placeholder="$t('page.manage.role.form.roleDesc')" />
         </NFormItem>
+        <NFormItem :label="$t('page.manage.role.roleStatus')" path="status">
+          <NRadioGroup v-model:value="model.status" :disabled="isSuperRole">
+            <NRadio v-for="item in enableStatusOptions" :key="item.value" :value="item.value" :label="$t(item.label)" />
+          </NRadioGroup>
+        </NFormItem>
       </NForm>
       <NSpace v-if="isEdit">
-        <NButton @click="openMenuAuthModal">{{ $t('page.manage.role.menuAuth') }}</NButton>
-        <MenuAuthModal v-model:visible="menuAuthVisible" :role-id="roleId" />
-        <NButton @click="openButtonAuthModal">{{ $t('page.manage.role.buttonAuth') }}</NButton>
-        <ButtonAuthModal v-model:visible="buttonAuthVisible" :role-id="roleId" />
+        <NButton v-if="hasAuth('B_ROLE::BTN_MENU_AUTH')" @click="openMenuAuthModal">
+          {{ $t('page.manage.role.menuAuth') }}
+        </NButton>
+        <MenuAuthModal v-model:visible="menuAuthVisible" :role-id="roleId" :readonly="isSuperRole" />
+        <NButton v-if="hasAuth('B_ROLE::BTN_BUTTON_AUTH')" @click="openButtonAuthModal">
+          {{ $t('page.manage.role.buttonAuth') }}
+        </NButton>
+        <ButtonAuthModal v-model:visible="buttonAuthVisible" :role-id="roleId" :readonly="isSuperRole" />
       </NSpace>
       <template #footer>
         <NSpace :size="16">

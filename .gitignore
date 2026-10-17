@@ -35,3 +35,4 @@ yarn.lock
 .VSCodeCounter
 src-tauri/target
 .codegraph
+.env.test

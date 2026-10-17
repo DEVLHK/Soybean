@@ -533,6 +533,7 @@ const local: App.I18n.Schema = {
         roleDesc: '角色描述',
         menuAuth: '菜单权限',
         buttonAuth: '按钮权限',
+        superRoleReadonlyTip: 'R_SUPER 为内置超级角色，始终拥有全部权限，仅供查看',
         form: {
           roleName: '请输入角色名称',
           roleCode: '请输入角色编码',
@@ -551,6 +552,7 @@ const local: App.I18n.Schema = {
         userEmail: '邮箱',
         userStatus: '用户状态',
         userRole: '用户角色',
+        userPassword: '初始密码',
         form: {
           userName: '请输入用户名',
           userGender: '请选择性别',
@@ -558,7 +560,8 @@ const local: App.I18n.Schema = {
           userPhone: '请输入手机号',
           userEmail: '请输入邮箱',
           userStatus: '请选择用户状态',
-          userRole: '请选择用户角色'
+          userRole: '请选择用户角色',
+          userPassword: '请输入初始密码'
         },
         addUser: '新增用户',
         editUser: '编辑用户',

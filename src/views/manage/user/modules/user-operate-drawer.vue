@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { jsonClone } from '@sa/utils';
 import { enableStatusOptions, userGenderOptions } from '@/constants/business';
-import { fetchGetAllRoles } from '@/service/api';
+import { fetchAddUser, fetchGetAllRoles, fetchUpdateUser } from '@/service/api';
 import { $t } from '@/locales';
 import { useFormRules, useNaiveForm } from '@/hooks/common/form';
 
@@ -43,9 +43,14 @@ const title = computed(() => {
 type Model = Pick<
   Api.SystemManage.User,
   'userName' | 'userGender' | 'nickName' | 'userPhone' | 'userEmail' | 'userRoles' | 'status'
->;
+> & {
+  /** only for add */
+  password: string;
+};
 
 const model = ref(createDefaultModel());
+
+const isEdit = computed(() => props.operateType === 'edit');
 
 function createDefaultModel(): Model {
   return {
@@ -55,15 +60,20 @@ function createDefaultModel(): Model {
     userPhone: '',
     userEmail: '',
     userRoles: [],
-    status: null
+    status: null,
+    password: ''
   };
 }
 
-type RuleKey = Extract<keyof Model, 'userName' | 'status'>;
+type RuleKey = Extract<keyof Model, 'userName' | 'status'> | 'password';
 
 const rules: Record<RuleKey, App.Global.FormRule> = {
   userName: defaultRequiredRule,
-  status: defaultRequiredRule
+  status: defaultRequiredRule,
+  password: {
+    ...defaultRequiredRule,
+    trigger: ['input', 'blur']
+  }
 };
 
 /** the enabled role options */
@@ -104,10 +114,17 @@ function closeDrawer() {
 
 async function handleSubmit() {
   await validate();
-  // request
-  window.$message?.success($t('common.updateSuccess'));
-  closeDrawer();
-  emit('submitted');
+
+  const { password: _password, ...rest } = model.value;
+  const { error } = isEdit.value
+    ? await fetchUpdateUser({ ...rest, id: props.rowData!.id })
+    : await fetchAddUser({ ...model.value });
+
+  if (!error) {
+    window.$message?.success($t(props.operateType === 'add' ? 'common.addSuccess' : 'common.updateSuccess'));
+    closeDrawer();
+    emit('submitted');
+  }
 }
 
 watch(visible, () => {
@@ -124,7 +141,19 @@ watch(visible, () => {
     <NDrawerContent :title="title" :native-scrollbar="false" closable>
       <NForm ref="formRef" :model="model" :rules="rules">
         <NFormItem :label="$t('page.manage.user.userName')" path="userName">
-          <NInput v-model:value="model.userName" :placeholder="$t('page.manage.user.form.userName')" />
+          <NInput
+            v-model:value="model.userName"
+            :disabled="isEdit"
+            :placeholder="$t('page.manage.user.form.userName')"
+          />
+        </NFormItem>
+        <NFormItem v-if="!isEdit" :label="$t('page.manage.user.userPassword')" path="password">
+          <NInput
+            v-model:value="model.password"
+            type="password"
+            show-password-on="click"
+            :placeholder="$t('page.manage.user.form.userPassword')"
+          />
         </NFormItem>
         <NFormItem :label="$t('page.manage.user.userGender')" path="userGender">
           <NRadioGroup v-model:value="model.userGender">
@@ -140,11 +169,6 @@ watch(visible, () => {
         <NFormItem :label="$t('page.manage.user.userEmail')" path="email">
           <NInput v-model:value="model.userEmail" :placeholder="$t('page.manage.user.form.userEmail')" />
         </NFormItem>
-        <NFormItem :label="$t('page.manage.user.userStatus')" path="status">
-          <NRadioGroup v-model:value="model.status">
-            <NRadio v-for="item in enableStatusOptions" :key="item.value" :value="item.value" :label="$t(item.label)" />
-          </NRadioGroup>
-        </NFormItem>
         <NFormItem :label="$t('page.manage.user.userRole')" path="roles">
           <NSelect
             v-model:value="model.userRoles"
@@ -152,6 +176,11 @@ watch(visible, () => {
             :options="roleOptions"
             :placeholder="$t('page.manage.user.form.userRole')"
           />
+        </NFormItem>
+        <NFormItem :label="$t('page.manage.user.userStatus')" path="status">
+          <NRadioGroup v-model:value="model.status">
+            <NRadio v-for="item in enableStatusOptions" :key="item.value" :value="item.value" :label="$t(item.label)" />
+          </NRadioGroup>
         </NFormItem>
       </NForm>
       <template #footer>
