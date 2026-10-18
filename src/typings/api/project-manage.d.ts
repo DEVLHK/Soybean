@@ -61,6 +61,10 @@ declare namespace Api {
     interface FailedBugComment {
       projectId: string;
       bugId: string;
+      /** bug title, joined from pms_failed_bug by backend */
+      bugTitle?: string | null;
+      /** bug current status, joined from pms_failed_bug by backend */
+      bugStatus?: string | null;
       /** sequence number within the bug, bigger = newer */
       seqNo: number;
       /** test fail date this comment belongs to, "YYYY-MM-DD" */

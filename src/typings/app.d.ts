@@ -624,6 +624,8 @@ declare namespace App {
         projectManage: {
           failedBug: {
             bugList: string;
+            pendingAnalysisList: string;
+            hasAnalysis: string;
             bugId: string;
             bugTitle: string;
             bugCurrentStatus: string;
@@ -647,9 +649,11 @@ declare namespace App {
               failureReasonCategory: string;
               failureReason: string;
               isCausedByFixing: string;
+              reasonRequired: string;
               suggestion: string;
               category: {
                 '1': string;
+                '12': string;
                 '2': string;
                 '3': string;
                 '4': string;
@@ -662,6 +666,64 @@ declare namespace App {
                 '11': string;
               };
             };
+          };
+        };
+        scheduleManage: {
+          schedulerJob: {
+            jobName: string;
+            scriptName: string;
+            description: string;
+            period: string;
+            periodType: string;
+            periodInterval: string;
+            periodUnit: {
+              second: string;
+              minute: string;
+              hour: string;
+              day: string;
+              week: string;
+              month: string;
+              quarter: string;
+              year: string;
+            };
+            firstRun: string;
+            firstRunDate: string;
+            firstRunTime: string;
+            lastRun: string;
+            lastRunStatus: string;
+            createBy: string;
+            createTime: string;
+            updateBy: string;
+            updateTime: string;
+            detail: string;
+            addJob: string;
+            editJob: string;
+            deleteConfirm: string;
+          };
+          scriptManage: {
+            scriptName: string;
+            scriptPath: string;
+            scriptPathPlaceholder: string;
+            uploadScript: string;
+            selectFile: string;
+            uploadTip: string;
+            description: string;
+            paramCount: string;
+            params: string;
+            paramRequired: string;
+            paramName: string;
+            paramDescription: string;
+            paramType: string;
+            optional: string;
+            defaultValue: string;
+            createBy: string;
+            createTime: string;
+            updateBy: string;
+            updateTime: string;
+            detail: string;
+            addScript: string;
+            editScript: string;
+            deleteConfirm: string;
           };
         };
         proNaive: {

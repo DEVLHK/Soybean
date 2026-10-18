@@ -243,8 +243,11 @@ const routeMap: RouteMap = {
   "pro-naive_table_row-edit": "/pro-naive/table/row-edit",
   "project-manage": "/project-manage",
   "project-manage_bug-manage": "/project-manage/bug-manage",
-  "project-manage_bug-manage_bug-list": "/project-manage/bug-manage/bug-list",
+  "project-manage_bug-manage_bug-review": "/project-manage/bug-manage/bug-review",
   "project-manage_bug-manage_failed-bug": "/project-manage/bug-manage/failed-bug",
+  "schedule-manage": "/schedule-manage",
+  "schedule-manage_scheduler-job": "/schedule-manage/scheduler-job",
+  "schedule-manage_script-manage": "/schedule-manage/script-manage",
   "user-center": "/user-center"
 };
 

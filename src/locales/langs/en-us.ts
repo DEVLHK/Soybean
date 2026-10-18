@@ -233,7 +233,10 @@ const local: App.I18n.Schema = {
     'project-manage': 'Project Management',
     'project-manage_bug-manage': 'Bug Management',
     'project-manage_bug-manage_failed-bug': 'Failed Bug Management',
-    'project-manage_bug-manage_bug-list': 'Failed Bug Review',
+    'project-manage_bug-manage_bug-review': 'Unanalyzed Failed Bugs',
+    'schedule-manage': 'Scheduled Tasks',
+    'schedule-manage_scheduler-job': 'Scheduler Job List',
+    'schedule-manage_script-manage': 'Script Management',
     document: 'Document',
     document_project: 'Project Document',
     'document_project-link': 'Project Document(External Link)',
@@ -453,6 +456,8 @@ const local: App.I18n.Schema = {
     projectManage: {
       failedBug: {
         bugList: 'Bug List',
+        pendingAnalysisList: 'Pending Analysis List',
+        hasAnalysis: 'Analyzed',
         bugId: 'Bug ID',
         bugTitle: 'Bug Title',
         bugCurrentStatus: 'Bug Current Status',
@@ -469,16 +474,18 @@ const local: App.I18n.Schema = {
         },
         comment: {
           title: 'Bug Comments',
-          addComment: 'Comment',
-          seqNo: 'No.',
+          addComment: 'Analysis',
+          seqNo: 'Bug No.',
           commentDate: 'Comment Time',
           commentedBy: 'Commenter',
           failureReasonCategory: 'Failure Category',
           failureReason: 'Failure Reason',
-          isCausedByFixing: 'Introduced by Fix',
+          isCausedByFixing: 'Fixed Quality Issue',
+          reasonRequired: 'Failure reason is required',
           suggestion: 'Suggestion',
           category: {
-            '1': 'New requirements raised before fully reviewing all issues',
+            '1': 'Did not fully review all issues',
+            '12': 'New requirements raised',
             '2': 'QA not performed in UAT environment',
             '3': 'Non-functional UI optimization',
             '4': 'Compatibility across device models',
@@ -491,6 +498,64 @@ const local: App.I18n.Schema = {
             '11': 'Version issue'
           }
         }
+      }
+    },
+    scheduleManage: {
+      schedulerJob: {
+        jobName: 'Job Name',
+        scriptName: 'Script File',
+        description: 'Description',
+        period: 'Schedule',
+        periodType: 'Period Type',
+        periodInterval: 'Interval',
+        periodUnit: {
+          second: 'second(s)',
+          minute: 'minute(s)',
+          hour: 'hour(s)',
+          day: 'day(s)',
+          week: 'week(s)',
+          month: 'month(s)',
+          quarter: 'quarter(s)',
+          year: 'year(s)'
+        },
+        firstRun: 'First Run',
+        firstRunDate: 'First Run Date',
+        firstRunTime: 'First Run Time',
+        lastRun: 'Last Run',
+        lastRunStatus: 'Last Run Status',
+        createBy: 'Created By',
+        createTime: 'Created Time',
+        updateBy: 'Updated By',
+        updateTime: 'Updated Time',
+        detail: 'Detail',
+        addJob: 'Add Scheduler Job',
+        editJob: 'Edit Scheduler Job',
+        deleteConfirm: 'Confirm deleting this scheduler job'
+      },
+      scriptManage: {
+        scriptName: 'Script Name',
+        scriptPath: 'Script Path',
+        scriptPathPlaceholder: 'Repo-relative path, e.g. app/schedulerJob/xxx/jobs/xxx.py',
+        uploadScript: 'Upload Script',
+        selectFile: 'Select File',
+        uploadTip: 'Only .py files are supported',
+        description: 'Description',
+        paramCount: 'Params',
+        params: 'Parameter Definitions',
+        paramRequired: 'Params: name / description / type / default are all required in each row (remove unused rows)',
+        paramName: 'Name',
+        paramDescription: 'Description',
+        paramType: 'Type',
+        optional: 'Optional',
+        defaultValue: 'Default',
+        createBy: 'Created By',
+        createTime: 'Created Time',
+        updateBy: 'Updated By',
+        updateTime: 'Updated Time',
+        detail: 'Detail',
+        addScript: 'Add Script',
+        editScript: 'Edit Script',
+        deleteConfirm: 'Confirm deleting this script'
       }
     },
     proNaive: {

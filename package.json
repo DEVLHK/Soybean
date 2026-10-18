@@ -76,6 +76,7 @@
     "pinyin-pro": "3.29.4",
     "print-js": "1.6.0",
     "pro-naive-ui": "3.2.3",
+    "quill": "^2.0.3",
     "swiper": "14.3.0",
     "tailwind-merge": "3.7.0",
     "typeit": "8.8.7",

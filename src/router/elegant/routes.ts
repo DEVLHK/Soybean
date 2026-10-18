@@ -709,12 +709,12 @@ export const generatedRoutes: GeneratedRoute[] = [
         },
         children: [
           {
-            name: 'project-manage_bug-manage_bug-list',
-            path: '/project-manage/bug-manage/bug-list',
-            component: 'view.project-manage_bug-manage_bug-list',
+            name: 'project-manage_bug-manage_bug-review',
+            path: '/project-manage/bug-manage/bug-review',
+            component: 'view.project-manage_bug-manage_bug-review',
             meta: {
-              title: 'project-manage_bug-manage_bug-list',
-              i18nKey: 'route.project-manage_bug-manage_bug-list'
+              title: 'project-manage_bug-manage_bug-review',
+              i18nKey: 'route.project-manage_bug-manage_bug-review'
             }
           },
           {
@@ -727,6 +727,35 @@ export const generatedRoutes: GeneratedRoute[] = [
             }
           }
         ]
+      }
+    ]
+  },
+  {
+    name: 'schedule-manage',
+    path: '/schedule-manage',
+    component: 'layout.base',
+    meta: {
+      title: 'schedule-manage',
+      i18nKey: 'route.schedule-manage'
+    },
+    children: [
+      {
+        name: 'schedule-manage_scheduler-job',
+        path: '/schedule-manage/scheduler-job',
+        component: 'view.schedule-manage_scheduler-job',
+        meta: {
+          title: 'schedule-manage_scheduler-job',
+          i18nKey: 'route.schedule-manage_scheduler-job'
+        }
+      },
+      {
+        name: 'schedule-manage_script-manage',
+        path: '/schedule-manage/script-manage',
+        component: 'view.schedule-manage_script-manage',
+        meta: {
+          title: 'schedule-manage_script-manage',
+          i18nKey: 'route.schedule-manage_script-manage'
+        }
       }
     ]
   },

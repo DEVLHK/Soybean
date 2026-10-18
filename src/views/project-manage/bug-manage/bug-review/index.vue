@@ -1,22 +1,23 @@
 <script setup lang="tsx">
-import { computed, nextTick, reactive, ref, toRaw } from 'vue';
+import { computed, reactive, ref, toRaw } from 'vue';
 import { NButton, NTag } from 'naive-ui';
 import { useNDataTable } from 'pro-naive-ui';
 import type { ProDataTableColumns } from 'pro-naive-ui';
-import WangEditor from 'wangeditor';
 import { fetchGetBugCommentDetail, fetchGetBugCommentList, fetchUpdateBugComment } from '@/service/api';
 import { $t } from '@/locales';
 import { useFormRules, useNaiveForm } from '@/hooks/common/form';
 import ConfigProvider from '@/views/pro-naive/ConfigProvider.vue';
 
 defineOptions({
-  name: 'ProjectManageBugManageBugList'
+  name: 'ProjectManageBugManageBugReview'
 });
 
 interface BugCommentSearchValues {
   projectId: string | null;
   bugId: string | null;
   testFailureDate: number | null;
+  /** "1" analyzed, "2" not analyzed — client-side only */
+  hasAnalysis: string | null;
 }
 
 async function fetchList(params: any, values: BugCommentSearchValues | Record<string, any>) {
@@ -33,13 +34,22 @@ async function fetchList(params: any, values: BugCommentSearchValues | Record<st
     return { total: 0, list: [] };
   }
 
-  return { total: data.total, list: data.records };
+  // has-analysis is derived from failureReasonCategory, backend has no such param (filters current page only)
+  let records = data.records;
+  if (values.hasAnalysis === '1') {
+    records = records.filter(row => row.failureReasonCategory != null);
+  } else if (values.hasAnalysis === '2') {
+    records = records.filter(row => row.failureReasonCategory == null);
+  }
+
+  return { total: data.total, list: records };
 }
 
 /** failure reason category dictionary (backend has no dict endpoint, maintained here) */
 const failureReasonCategoryLabels = computed(() => {
   const map: Record<string, App.I18n.I18nKey> = {
     1: 'page.projectManage.failedBug.comment.category.1',
+    12: 'page.projectManage.failedBug.comment.category.12',
     2: 'page.projectManage.failedBug.comment.category.2',
     3: 'page.projectManage.failedBug.comment.category.3',
     4: 'page.projectManage.failedBug.comment.category.4',
@@ -54,26 +64,56 @@ const failureReasonCategoryLabels = computed(() => {
   return Object.fromEntries(Object.entries(map).map(([code, key]) => [code, $t(key)])) as Record<string, string>;
 });
 
+/** pms bug detail page, e.g. BUG-37624 -> https://pms.hisunglobal.com/bug-view-37624.html */
+function bugViewUrl(bugId: string): string | null {
+  const match = bugId.match(/(\d+)\s*$/);
+  return match ? `https://pms.hisunglobal.com/bug-view-${Number(match[1])}.html` : null;
+}
+
 const columns = computed<ProDataTableColumns<Api.ProjectManage.FailedBugComment>>(() => {
   return [
-    {
-      key: 'index',
-      title: $t('common.index'),
-      align: 'center',
-      width: 64,
-      render: (_, index) => index + 1
-    },
     {
       key: 'projectId',
       title: $t('page.projectManage.failedBug.projectId'),
       align: 'center',
-      width: 130
+      width: 90
     },
     {
       key: 'bugId',
       title: $t('page.projectManage.failedBug.bugId'),
       align: 'center',
-      width: 150
+      width: 90,
+      render: row => {
+        const url = bugViewUrl(row.bugId);
+        return url ? (
+          <a class="text-primary hover:underline" href={url} target="_blank" rel="noopener noreferrer">
+            {row.bugId}
+          </a>
+        ) : (
+          row.bugId
+        );
+      }
+    },
+    {
+      key: 'bugTitle',
+      title: $t('page.projectManage.failedBug.bugTitle'),
+      align: 'left',
+      minWidth: 130,
+      ellipsis: { tooltip: true },
+      render: row => row.bugTitle ?? '-'
+    },
+    {
+      key: 'bugStatus',
+      title: $t('page.projectManage.failedBug.bugCurrentStatus'),
+      align: 'center',
+      width: 110,
+      render: row => row.bugStatus ?? '-'
+    },
+    {
+      key: 'seqNo',
+      title: $t('page.projectManage.failedBug.comment.seqNo'),
+      align: 'center',
+      width: 100
     },
     {
       key: 'testFailureDate',
@@ -82,12 +122,36 @@ const columns = computed<ProDataTableColumns<Api.ProjectManage.FailedBugComment>
       width: 120
     },
     {
+      key: 'lastResolver',
+      title: $t('page.projectManage.failedBug.bugLastResolver'),
+      align: 'center',
+      width: 150,
+      ellipsis: { tooltip: true }
+    },
+    {
+      key: 'qaOwner',
+      title: $t('page.projectManage.failedBug.bugQa'),
+      align: 'center',
+      width: 110
+    },
+    {
       key: 'failureReasonCategory',
       title: $t('page.projectManage.failedBug.comment.failureReasonCategory'),
       align: 'center',
-      width: 180,
+      minWidth: 180,
       ellipsis: { tooltip: true },
       render: row => failureReasonCategoryLabels.value[row.failureReasonCategory] ?? row.failureReasonCategory
+    },
+    {
+      key: 'hasAnalysis',
+      title: $t('page.projectManage.failedBug.hasAnalysis'),
+      align: 'center',
+      width: 120,
+      render: row => (
+        <NTag type={row.failureReasonCategory != null ? 'success' : 'warning'}>
+          {row.failureReasonCategory != null ? $t('common.yesOrNo.yes') : $t('common.yesOrNo.no')}
+        </NTag>
+      )
     },
     {
       key: 'reviewStatus',
@@ -139,8 +203,14 @@ function handleReview(row: Api.ProjectManage.FailedBugComment) {
 const defaultSearchValues: BugCommentSearchValues = {
   projectId: null,
   bugId: null,
-  testFailureDate: null
+  testFailureDate: null,
+  hasAnalysis: null
 };
+
+const hasAnalysisOptions = [
+  { label: $t('common.yesOrNo.yes'), value: '1' },
+  { label: $t('common.yesOrNo.no'), value: '2' }
+];
 
 const searchValues = ref<BugCommentSearchValues>({ ...defaultSearchValues });
 
@@ -172,6 +242,8 @@ interface CommentFormModel {
   testFailureDate: string;
   failureReasonCategory: string | null;
   isCausedByFixing: boolean;
+  failureReason: string;
+  suggestion: string;
 }
 
 const commentModalVisible = ref(false);
@@ -190,52 +262,22 @@ function createDefaultCommentModel(): CommentFormModel {
     seqNo: 0,
     testFailureDate: '',
     failureReasonCategory: null,
-    isCausedByFixing: false
+    isCausedByFixing: false,
+    failureReason: '',
+    suggestion: ''
   };
 }
 
-/** rich text editors for failureReason / suggestion */
-const reasonDomRef = ref<HTMLElement>();
-const suggestionDomRef = ref<HTMLElement>();
-const reasonEditor = ref<WangEditor>();
-const suggestionEditor = ref<WangEditor>();
-
-/** editors live inside the modal, create them lazily after the modal dom is rendered */
-let editorsReady = false;
-
-function ensureEditors() {
-  if (editorsReady) {
-    return Promise.resolve();
-  }
-
-  return nextTick().then(() => {
-    if (reasonDomRef.value && !reasonEditor.value) {
-      reasonEditor.value = createEditor(reasonDomRef.value);
-    }
-    if (suggestionDomRef.value && !suggestionEditor.value) {
-      suggestionEditor.value = createEditor(suggestionDomRef.value);
-    }
-    editorsReady = Boolean(reasonEditor.value && suggestionEditor.value);
-  });
-}
-
-function createEditor(dom: HTMLElement) {
-  const editor = new WangEditor(dom);
-  editor.config.zIndex = 10;
-  editor.config.height = 200;
-  editor.config.placeholder = '';
-  editor.create();
-  return editor;
-}
-
-function setEditorHtml(editor: WangEditor | undefined, html: string) {
-  editor?.txt.html(html ?? '');
-}
-
-function getEditorHtml(editor: WangEditor | undefined) {
-  const html = editor?.txt.html() ?? '';
-  // wangEditor's empty content
-  return html === '<p><br></p>' ? '' : html;
+/** rich-text era content -> plain text for the textarea fields */
+function htmlToText(html: string) {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .split('\n')
+    .map(line => line.trim())
+    .join('\n')
+    .trim();
 }
 
 type CommentRuleKey = 'failureReasonCategory';
@@ -244,8 +286,24 @@ const commentRules: Record<CommentRuleKey, App.Global.FormRule> = {
   failureReasonCategory: defaultRequiredRule
 };
 
+/** dropdown order: keep 12 (提出新需求) right after 1, numeric key order would push it to the end */
+const categoryOrder = ['1', '12', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'];
+
 const categoryOptions = computed(() =>
-  Object.entries(failureReasonCategoryLabels.value).map(([value, label]) => ({ label, value }))
+  categoryOrder
+    .filter(code => failureReasonCategoryLabels.value[code])
+    .map(value => ({ label: failureReasonCategoryLabels.value[value], value }))
+);
+
+/** fullscreen toggle for the analysis modal */
+const analysisFullscreen = ref(false);
+const analysisModalStyle = computed(() =>
+  analysisFullscreen.value
+    ? { width: '100vw', height: '100vh', maxWidth: '100vw', borderRadius: '0' }
+    : { maxWidth: '96vw' }
+);
+const analysisContentStyle = computed(() =>
+  analysisFullscreen.value ? 'max-height: calc(100vh - 180px); overflow: auto' : 'max-height: 72vh; overflow: auto'
 );
 
 /** open the comment modal: prefill from row, then load detail for full fields */
@@ -257,13 +315,8 @@ async function handleComment(row: Api.ProjectManage.FailedBugComment) {
     testFailureDate: row.testFailureDate,
     failureReasonCategory: row.failureReasonCategory
   });
-  setEditorHtml(reasonEditor.value, '');
-  setEditorHtml(suggestionEditor.value, '');
   restoreValidation();
   commentModalVisible.value = true;
-
-  // create editors after the modal content is in the dom
-  await ensureEditors();
 
   // the list api keeps light, fetch the detail to prefill reason/suggestion/etc.
   commentDetailLoading.value = true;
@@ -277,15 +330,21 @@ async function handleComment(row: Api.ProjectManage.FailedBugComment) {
   if (!error && data) {
     Object.assign(commentModel, {
       failureReasonCategory: data.failureReasonCategory,
-      isCausedByFixing: data.isCausedByFixing ?? false
+      isCausedByFixing: data.isCausedByFixing ?? false,
+      failureReason: htmlToText(data.failureReason ?? ''),
+      suggestion: htmlToText(data.suggestion ?? '')
     });
-    setEditorHtml(reasonEditor.value, data.failureReason ?? '');
-    setEditorHtml(suggestionEditor.value, data.suggestion ?? '');
   }
 }
 
 async function handleSubmitComment() {
   await validate();
+
+  // all fields required except suggestion
+  if (!commentModel.failureReason.trim()) {
+    window.$message?.error($t('page.projectManage.failedBug.comment.reasonRequired'));
+    return;
+  }
 
   submitLoading.value = true;
 
@@ -294,9 +353,9 @@ async function handleSubmitComment() {
     bugId: commentModel.bugId,
     seqNo: commentModel.seqNo,
     failureReasonCategory: commentModel.failureReasonCategory!,
-    failureReason: getEditorHtml(reasonEditor.value),
+    failureReason: commentModel.failureReason.trim(),
     isCausedByFixing: commentModel.isCausedByFixing,
-    suggestion: getEditorHtml(suggestionEditor.value)
+    suggestion: commentModel.suggestion.trim()
   });
 
   submitLoading.value = false;
@@ -313,7 +372,7 @@ async function handleSubmitComment() {
   <ConfigProvider>
     <div class="h-full flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
       <NCard :bordered="false" size="small" class="card-wrapper">
-        <NCollapse>
+        <NCollapse :default-expanded-names="['bug-review-search']">
           <NCollapseItem :title="$t('common.search')" name="bug-review-search">
             <NForm :model="searchValues" label-placement="left" :label-width="120">
               <NGrid responsive="screen" item-responsive>
@@ -355,6 +414,19 @@ async function handleSubmitComment() {
                     :placeholder="$t('page.projectManage.failedBug.testFailDate')"
                   />
                 </NFormItemGi>
+                <NFormItemGi
+                  span="24 s:12 m:8"
+                  :label="$t('page.projectManage.failedBug.hasAnalysis')"
+                  path="hasAnalysis"
+                  class="pr-24px"
+                >
+                  <NSelect
+                    v-model:value="searchValues.hasAnalysis"
+                    clearable
+                    :options="hasAnalysisOptions"
+                    :placeholder="$t('page.projectManage.failedBug.hasAnalysis')"
+                  />
+                </NFormItemGi>
                 <NFormItemGi span="24" class="pr-24px">
                   <NSpace class="w-full" justify="end">
                     <NButton @click="resetSearch">
@@ -377,7 +449,7 @@ async function handleSubmitComment() {
         </NCollapse>
       </NCard>
       <ProDataTable
-        :title="$t('route.project-manage_bug-manage_bug-list')"
+        :title="$t('page.projectManage.failedBug.pendingAnalysisList')"
         size="small"
         flex-height
         :columns="columns"
@@ -389,12 +461,25 @@ async function handleSubmitComment() {
 
     <NModal
       v-model:show="commentModalVisible"
-      :title="$t('page.projectManage.failedBug.comment.addComment')"
       preset="card"
-      class="w-760px"
+      class="w-1200px"
+      :style="analysisModalStyle"
+      :content-style="analysisContentStyle"
+      :mask-closable="false"
       display-directive="show"
     >
-      <NForm ref="formRef" :model="commentModel" :rules="commentRules" label-placement="left" :label-width="110">
+      <template #header>
+        <div class="flex w-full items-center justify-between">
+          <span>{{ $t('page.projectManage.failedBug.comment.addComment') }}</span>
+          <NButton size="tiny" quirk circle class="mr-24px" @click="analysisFullscreen = !analysisFullscreen">
+            <template #icon>
+              <icon-ic-round-fullscreen v-if="!analysisFullscreen" class="text-icon" />
+              <icon-ic-round-fullscreen-exit v-else class="text-icon" />
+            </template>
+          </NButton>
+        </div>
+      </template>
+      <NForm ref="formRef" :model="commentModel" :rules="commentRules" label-placement="left" :label-width="140">
         <NFormItem :label="$t('page.projectManage.failedBug.projectId')" path="projectId">
           <NInput v-model:value="commentModel.projectId" disabled />
         </NFormItem>
@@ -418,17 +503,29 @@ async function handleSubmitComment() {
             :placeholder="$t('page.projectManage.failedBug.comment.failureReasonCategory')"
           />
         </NFormItem>
-        <NFormItem :label="$t('page.projectManage.failedBug.comment.failureReason')" path="failureReason">
-          <div ref="reasonDomRef" class="w-full bg-white dark:bg-dark"></div>
-        </NFormItem>
         <NFormItem :label="$t('page.projectManage.failedBug.comment.isCausedByFixing')" path="isCausedByFixing">
           <NRadioGroup v-model:value="commentModel.isCausedByFixing">
             <NRadio :value="false">{{ $t('common.yesOrNo.no') }}</NRadio>
             <NRadio :value="true">{{ $t('common.yesOrNo.yes') }}</NRadio>
           </NRadioGroup>
         </NFormItem>
+        <NFormItem :label="$t('page.projectManage.failedBug.comment.failureReason')" path="failureReason">
+          <NInput
+            v-model:value="commentModel.failureReason"
+            type="textarea"
+            :rows="8"
+            :loading="commentDetailLoading"
+            :placeholder="$t('page.projectManage.failedBug.comment.failureReason')"
+          />
+        </NFormItem>
         <NFormItem :label="$t('page.projectManage.failedBug.comment.suggestion')" path="suggestion">
-          <div ref="suggestionDomRef" class="w-full bg-white dark:bg-dark"></div>
+          <NInput
+            v-model:value="commentModel.suggestion"
+            type="textarea"
+            :rows="8"
+            :loading="commentDetailLoading"
+            :placeholder="$t('page.projectManage.failedBug.comment.suggestion')"
+          />
         </NFormItem>
       </NForm>
       <template #footer>
@@ -443,14 +540,4 @@ async function handleSubmitComment() {
   </ConfigProvider>
 </template>
 
-<style scoped>
-:deep(.w-e-toolbar) {
-  background: inherit !important;
-  border-color: #999 !important;
-}
-
-:deep(.w-e-text-container) {
-  background: inherit;
-  border-color: #999 !important;
-}
-</style>
+<style scoped></style>

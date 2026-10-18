@@ -159,6 +159,7 @@ const reviewStatusOptions = computed(() => [
 const failureReasonCategoryLabels = computed(() => {
   const map: Record<string, App.I18n.I18nKey> = {
     1: 'page.projectManage.failedBug.comment.category.1',
+    12: 'page.projectManage.failedBug.comment.category.12',
     2: 'page.projectManage.failedBug.comment.category.2',
     3: 'page.projectManage.failedBug.comment.category.3',
     4: 'page.projectManage.failedBug.comment.category.4',
