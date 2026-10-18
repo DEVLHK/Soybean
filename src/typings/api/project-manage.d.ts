@@ -19,6 +19,27 @@ declare namespace Api {
       bugReviewStatus?: string | null;
     }
 
+    /** failed bug comment search params */
+    interface BugCommentSearchParams {
+      current?: number;
+      pageSize?: number;
+      projectId?: string | null;
+      bugId?: string | null;
+      /** test failure date (timestamp of the picked day) */
+      testFailureDate?: number | null;
+    }
+
+    /** update bug comment params (located by projectId+bugId+seqNo, only changed business fields are sent) */
+    interface BugCommentUpdateParams {
+      projectId: string;
+      bugId: string;
+      seqNo: number;
+      failureReasonCategory?: string;
+      failureReason?: string;
+      isCausedByFixing?: boolean;
+      suggestion?: string;
+    }
+
     /** failed bug record */
     interface FailedBugRecord {
       bugId: string;
@@ -48,13 +69,13 @@ declare namespace Api {
       qaOwner: string;
       /** failure reason category code, "1"-"11" */
       failureReasonCategory: string;
-      failureReason: string;
-      /** whether introduced by fixing another bug */
-      isCausedByFixing: boolean;
-      suggestion: string;
+      /** following fields are only returned by the detail api (list api keeps light) */
+      failureReason?: string;
+      isCausedByFixing?: boolean;
+      suggestion?: string;
       /** comment time, "YYYY-MM-DD HH:mm:ss" */
-      commentDate: string;
-      commentedBy: string;
+      commentDate?: string;
+      commentedBy?: string;
       reviewer: string;
       /** review time, "YYYY-MM-DD HH:mm:ss" */
       reviewDate: string | null;

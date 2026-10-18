@@ -709,6 +709,15 @@ export const generatedRoutes: GeneratedRoute[] = [
         },
         children: [
           {
+            name: 'project-manage_bug-manage_bug-list',
+            path: '/project-manage/bug-manage/bug-list',
+            component: 'view.project-manage_bug-manage_bug-list',
+            meta: {
+              title: 'project-manage_bug-manage_bug-list',
+              i18nKey: 'route.project-manage_bug-manage_bug-list'
+            }
+          },
+          {
             name: 'project-manage_bug-manage_failed-bug',
             path: '/project-manage/bug-manage/failed-bug',
             component: 'view.project-manage_bug-manage_failed-bug',

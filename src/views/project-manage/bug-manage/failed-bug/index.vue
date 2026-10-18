@@ -4,7 +4,7 @@ import { NButton, NTag } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
 import { useNDataTable } from 'pro-naive-ui';
 import type { ProDataTableColumns } from 'pro-naive-ui';
-import { fetchGetBugCommentList, fetchGetFailedBugList } from '@/service/api';
+import { fetchGetBugCommentDetail, fetchGetBugCommentList, fetchGetFailedBugList } from '@/service/api';
 import { $t } from '@/locales';
 import ConfigProvider from '@/views/pro-naive/ConfigProvider.vue';
 
@@ -234,12 +234,27 @@ async function handleViewComments(row: Api.ProjectManage.FailedBugRecord) {
   commentModalVisible.value = true;
   commentLoading.value = true;
 
-  const { error, data } = await fetchGetBugCommentList({ projectId: row.projectId, bugId: row.bugId });
+  const { error, data } = await fetchGetBugCommentList({
+    current: 1,
+    pageSize: 100,
+    projectId: row.projectId,
+    bugId: row.bugId
+  });
+
+  if (!error) {
+    const records = data?.records ?? [];
+
+    // the list api keeps light (no reason/suggestion/commenter), fetch details to fill the modal
+    const details = await Promise.all(
+      records.map(item => fetchGetBugCommentDetail({ projectId: item.projectId, bugId: item.bugId, seqNo: item.seqNo }))
+    );
+
+    commentList.value = details
+      .map((detail, index) => ({ ...records[index], ...(detail.error ? {} : detail.data) }))
+      .sort((a, b) => b.seqNo - a.seqNo);
+  }
 
   commentLoading.value = false;
-  if (!error) {
-    commentList.value = data?.records ?? [];
-  }
 }
 </script>
 

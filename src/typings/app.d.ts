@@ -640,6 +640,7 @@ declare namespace App {
             };
             comment: {
               title: string;
+              addComment: string;
               seqNo: string;
               commentDate: string;
               commentedBy: string;

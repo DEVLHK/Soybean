@@ -9,13 +9,32 @@ export function fetchGetFailedBugList(params: Api.ProjectManage.FailedBugSearchP
   });
 }
 
-/** get failed bug comment list (locate by joint key projectId + bugId) */
-export function fetchGetBugCommentList(params: Pick<Api.ProjectManage.FailedBugRecord, 'projectId' | 'bugId'>) {
+/** get failed bug comment list (paginated, searchable) */
+export function fetchGetBugCommentList(params: Api.ProjectManage.BugCommentSearchParams) {
   return request<Api.Common.PaginatingQueryRecord<Api.ProjectManage.FailedBugComment>>({
     url: '/projectManage/failedBug/getBugCommentList',
     method: 'get',
-    // comments of one bug are few, fetch all in one page
-    params: { current: 1, pageSize: 100, ...params }
+    params
+  });
+}
+
+/** get failed bug comment detail (full fields incl. reason/suggestion/commenter) */
+export function fetchGetBugCommentDetail(
+  params: Pick<Api.ProjectManage.FailedBugComment, 'projectId' | 'bugId' | 'seqNo'>
+) {
+  return request<Api.ProjectManage.FailedBugComment>({
+    url: '/projectManage/failedBug/getBugCommentDetail',
+    method: 'get',
+    params
+  });
+}
+
+/** update bug comment (located by joint key projectId+bugId+seqNo) */
+export function fetchUpdateBugComment(data: Api.ProjectManage.BugCommentUpdateParams) {
+  return request<null>({
+    url: '/projectManage/failedBug/updateBugComment',
+    method: 'post',
+    data
   });
 }
 

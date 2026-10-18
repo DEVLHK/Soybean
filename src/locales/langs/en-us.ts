@@ -1,6 +1,6 @@
 const local: App.I18n.Schema = {
   system: {
-    title: 'SoybeanAdmin',
+    title: 'HSG Project Management System',
     updateTitle: 'System Version Update Notification',
     updateContent: 'A new version of the system has been detected. Do you want to refresh the page immediately?',
     updateConfirm: 'Refresh immediately',
@@ -233,6 +233,7 @@ const local: App.I18n.Schema = {
     'project-manage': 'Project Management',
     'project-manage_bug-manage': 'Bug Management',
     'project-manage_bug-manage_failed-bug': 'Failed Bug Management',
+    'project-manage_bug-manage_bug-list': 'Failed Bug Review',
     document: 'Document',
     document_project: 'Project Document',
     'document_project-link': 'Project Document(External Link)',
@@ -468,6 +469,7 @@ const local: App.I18n.Schema = {
         },
         comment: {
           title: 'Bug Comments',
+          addComment: 'Comment',
           seqNo: 'No.',
           commentDate: 'Comment Time',
           commentedBy: 'Commenter',

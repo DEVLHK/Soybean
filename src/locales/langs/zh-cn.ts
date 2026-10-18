@@ -1,6 +1,6 @@
 const local: App.I18n.Schema = {
   system: {
-    title: 'Soybean 管理系统',
+    title: 'HSG项目管理辅助系统',
     updateTitle: '系统版本更新通知',
     updateContent: '检测到系统有新版本发布，是否立即刷新页面？',
     updateConfirm: '立即刷新',
@@ -229,6 +229,7 @@ const local: App.I18n.Schema = {
     'project-manage': '项目管理',
     'project-manage_bug-manage': '缺陷管理',
     'project-manage_bug-manage_failed-bug': '失败缺陷管理',
+    'project-manage_bug-manage_bug-list': '复测失败评审',
     document: '文档',
     document_project: '项目文档',
     'document_project-link': '项目文档(外链)',
@@ -464,6 +465,7 @@ const local: App.I18n.Schema = {
         },
         comment: {
           title: '缺陷点评',
+          addComment: '评论',
           seqNo: '序号',
           commentDate: '点评时间',
           commentedBy: '点评人',
