@@ -676,6 +676,7 @@ declare namespace App {
             period: string;
             periodType: string;
             periodInterval: string;
+            logLevel: string;
             periodUnit: {
               second: string;
               minute: string;
@@ -699,6 +700,32 @@ declare namespace App {
             addJob: string;
             editJob: string;
             deleteConfirm: string;
+            enabled: string;
+            enabledOn: string;
+            enabledOff: string;
+            running: string;
+            runningTrue: string;
+            runningFalse: string;
+            start: string;
+            stop: string;
+            runLog: string;
+            triggerType: string;
+            triggerManual: string;
+            triggerScheduled: string;
+            logStatus: string;
+            statusSuccess: string;
+            statusFailed: string;
+            statusNone: string;
+            startTime: string;
+            endTime: string;
+            output: string;
+            download: string;
+            noLogFileTip: string;
+            totalLines: string;
+            scrollUpTip: string;
+            loadEarlier: string;
+            pollingTip: string;
+            loadingMore: string;
           };
           scriptManage: {
             scriptName: string;

@@ -1,18 +1,30 @@
 <script setup lang="tsx">
-import { computed, reactive, ref, toRaw } from 'vue';
-import { NButton, NTag } from 'naive-ui';
+import { computed, h, reactive, ref, toRaw } from 'vue';
+import type { Component } from 'vue';
+import { NButton, NTag, NTooltip } from 'naive-ui';
+import type { DataTableColumns } from 'naive-ui';
 import { useNDataTable } from 'pro-naive-ui';
 import type { ProDataTableColumns } from 'pro-naive-ui';
+import IconIcRoundArticle from '~icons/ic/round-article';
+import IconIcRoundDelete from '~icons/ic/round-delete';
+import IconIcRoundEdit from '~icons/ic/round-edit';
+import IconIcRoundPlayArrow from '~icons/ic/round-play-arrow';
+import IconIcRoundStop from '~icons/ic/round-stop-circle';
+import IconIcRoundVisibility from '~icons/ic/round-visibility';
 import {
   fetchAddSchedulerJob,
   fetchDeleteSchedulerJob,
   fetchGetSchedulerJobDetail,
   fetchGetSchedulerJobList,
+  fetchGetSchedulerJobRunLog,
+  fetchStartSchedulerJob,
+  fetchStopSchedulerJob,
   fetchUpdateSchedulerJob
 } from '@/service/api';
 import { $t } from '@/locales';
 import { useFormRules, useNaiveForm } from '@/hooks/common/form';
 import ConfigProvider from '@/views/pro-naive/ConfigProvider.vue';
+import RunLogContentModal from './modules/run-log-content-modal.vue';
 
 defineOptions({
   name: 'ScheduleManageSchedulerJob'
@@ -95,6 +107,13 @@ const columns = computed<ProDataTableColumns<Api.ScheduleManage.SchedulerJobReco
       render: row => `${row.periodInterval} ${periodTypeLabel(row.periodType)}`
     },
     {
+      key: 'logLevel',
+      title: $t('page.scheduleManage.schedulerJob.logLevel'),
+      align: 'center',
+      width: 100,
+      render: row => renderLogLevelTag(row.logLevel)
+    },
+    {
       key: 'firstRun',
       title: $t('page.scheduleManage.schedulerJob.firstRun'),
       align: 'center',
@@ -119,6 +138,41 @@ const columns = computed<ProDataTableColumns<Api.ScheduleManage.SchedulerJobReco
       }
     },
     {
+      key: 'lastRunStatus',
+      title: $t('page.scheduleManage.schedulerJob.lastRunStatus'),
+      align: 'center',
+      width: 100,
+      render: row => renderRunStatusTag(row.lastRunStatus)
+    },
+    {
+      key: 'enabled',
+      title: $t('page.scheduleManage.schedulerJob.enabled'),
+      align: 'center',
+      width: 90,
+      render: row =>
+        row.enabled === '1' ? (
+          <NTag type="success">{$t('page.scheduleManage.schedulerJob.enabledOn')}</NTag>
+        ) : (
+          <NTag type="warning">{$t('page.scheduleManage.schedulerJob.enabledOff')}</NTag>
+        )
+    },
+    {
+      key: 'running',
+      title: $t('page.scheduleManage.schedulerJob.running'),
+      align: 'center',
+      width: 90,
+      render: row =>
+        row.running ? (
+          <NTag type="success">{$t('page.scheduleManage.schedulerJob.runningTrue')}</NTag>
+        ) : (
+          <NTag>
+            {row.enabled === '1'
+              ? $t('page.scheduleManage.schedulerJob.runningFalse')
+              : $t('page.scheduleManage.schedulerJob.enabledOff')}
+          </NTag>
+        )
+    },
+    {
       key: 'updateTime',
       title: $t('page.scheduleManage.schedulerJob.updateTime'),
       align: 'center',
@@ -130,21 +184,62 @@ const columns = computed<ProDataTableColumns<Api.ScheduleManage.SchedulerJobReco
       align: 'center',
       width: 200,
       render: row => (
-        <div class="flex-center justify-center gap-8px">
-          <NButton type="primary" ghost size="small" onClick={() => handleDetail(row)}>
-            {$t('page.scheduleManage.schedulerJob.detail')}
-          </NButton>
-          <NButton type="primary" ghost size="small" onClick={() => handleEdit(row)}>
-            {$t('common.edit')}
-          </NButton>
-          <NButton type="error" ghost size="small" onClick={() => handleDelete(row)}>
-            {$t('common.delete')}
-          </NButton>
+        <div class="flex-center justify-center gap-4px">
+          {renderIconBtn($t('page.scheduleManage.schedulerJob.detail'), IconIcRoundVisibility, () => handleDetail(row))}
+          {renderIconBtn($t('common.edit'), IconIcRoundEdit, () => handleEdit(row))}
+          {row.enabled === '1'
+            ? renderIconBtn(
+                $t('page.scheduleManage.schedulerJob.stop'),
+                IconIcRoundStop,
+                () => handleStop(row),
+                'warning'
+              )
+            : renderIconBtn(
+                $t('page.scheduleManage.schedulerJob.start'),
+                IconIcRoundPlayArrow,
+                () => handleStart(row),
+                'success'
+              )}
+          {renderIconBtn(
+            $t('page.scheduleManage.schedulerJob.runLog'),
+            IconIcRoundArticle,
+            () => handleOpenRunLog(row),
+            'info'
+          )}
+          {renderIconBtn($t('common.delete'), IconIcRoundDelete, () => handleDelete(row), 'error')}
         </div>
       )
     }
   ];
 });
+
+type IconBtnType = 'primary' | 'success' | 'warning' | 'error' | 'info';
+
+/** icon-only button with tooltip */
+function renderIconBtn(tooltip: string, icon: Component, onClick: () => void, type: IconBtnType = 'primary') {
+  return (
+    <NTooltip>
+      {{
+        default: () => tooltip,
+        trigger: () => (
+          <NButton size="small" ghost type={type} onClick={onClick}>
+            {{ icon: () => h(icon) }}
+          </NButton>
+        )
+      }}
+    </NTooltip>
+  );
+}
+
+function renderRunStatusTag(status: string) {
+  if (status === '1') {
+    return <NTag type="success">{$t('page.scheduleManage.schedulerJob.statusSuccess')}</NTag>;
+  }
+  if (status === '2') {
+    return <NTag type="error">{$t('page.scheduleManage.schedulerJob.statusFailed')}</NTag>;
+  }
+  return <NTag>{$t('page.scheduleManage.schedulerJob.statusNone')}</NTag>;
+}
 
 const defaultSearchValues: SchedulerJobSearchValues = {
   jobName: null,
@@ -196,8 +291,27 @@ interface JobFormModel {
   description: string;
   periodType: Api.ScheduleManage.SchedulerJobPeriodType | null;
   periodInterval: number | null;
+  logLevel: Api.ScheduleManage.SchedulerJobLogLevel;
   firstRunDate: string | null;
   firstRunTime: string | null;
+}
+
+/** original logLevel of the row being edited; add = null. Unchanged values are omitted on update */
+const originalLogLevel = ref<Api.ScheduleManage.SchedulerJobLogLevel | null>(null);
+
+const logLevelOptions = computed(() =>
+  (['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] as const).map(level => ({ label: level, value: level }))
+);
+
+function renderLogLevelTag(level: Api.ScheduleManage.SchedulerJobLogLevel) {
+  const tagMap: Record<Api.ScheduleManage.SchedulerJobLogLevel, NaiveUI.ThemeColor> = {
+    DEBUG: 'default',
+    INFO: 'info',
+    WARNING: 'warning',
+    ERROR: 'error',
+    CRITICAL: 'error'
+  };
+  return <NTag type={tagMap[level]}>{level}</NTag>;
 }
 
 const operateModalVisible = ref(false);
@@ -231,6 +345,7 @@ function createDefaultJobModel(): JobFormModel {
     description: '',
     periodType: 'day',
     periodInterval: 1,
+    logLevel: 'INFO',
     firstRunDate: null,
     firstRunTime: null
   };
@@ -238,6 +353,7 @@ function createDefaultJobModel(): JobFormModel {
 
 function handleAdd() {
   editingId.value = null;
+  originalLogLevel.value = null;
   Object.assign(jobModel, createDefaultJobModel());
   restoreValidation();
   operateModalVisible.value = true;
@@ -245,12 +361,14 @@ function handleAdd() {
 
 function handleEdit(row: Api.ScheduleManage.SchedulerJobRecord) {
   editingId.value = row.id;
+  originalLogLevel.value = row.logLevel;
   Object.assign(jobModel, createDefaultJobModel(), {
     jobName: row.jobName,
     scriptName: row.scriptName,
     description: row.description ?? '',
     periodType: row.periodType,
     periodInterval: row.periodInterval,
+    logLevel: row.logLevel,
     firstRunDate: row.firstRunDate,
     firstRunTime: row.firstRunTime ? normalizeTime(row.firstRunTime) : null
   });
@@ -269,14 +387,28 @@ async function handleSubmit() {
     description: jobModel.description,
     periodType: jobModel.periodType!,
     periodInterval: jobModel.periodInterval ?? 1,
+    // add always sends logLevel (defaults INFO); edit sends it only when changed (omit = keep unchanged)
+    logLevel: jobModel.logLevel,
     firstRunDate: jobModel.firstRunDate,
     firstRunTime: jobModel.firstRunTime
   };
 
-  const { error } =
-    editingId.value === null
-      ? await fetchAddSchedulerJob(payload)
-      : await fetchUpdateSchedulerJob({ id: editingId.value, ...payload });
+  let request: Promise<{ error: unknown }>;
+
+  if (editingId.value === null) {
+    request = fetchAddSchedulerJob(payload);
+  } else {
+    const { logLevel: _formLogLevel, ...rest } = payload;
+    const updateData: Api.ScheduleManage.SchedulerJobUpdateParams = {
+      ...rest,
+      id: editingId.value,
+      // omit = keep unchanged (backend null = no modification)
+      ...(jobModel.logLevel !== originalLogLevel.value ? { logLevel: jobModel.logLevel } : {})
+    };
+    request = fetchUpdateSchedulerJob(updateData);
+  }
+
+  const { error } = await request;
 
   submitLoading.value = false;
 
@@ -301,6 +433,151 @@ async function handleDelete(row: Api.ScheduleManage.SchedulerJobRecord) {
       }
     }
   });
+}
+
+/** ---------- start / stop ---------- */
+async function handleStart(row: Api.ScheduleManage.SchedulerJobRecord) {
+  const { error } = await fetchStartSchedulerJob(row.id);
+  if (!error) {
+    window.$message?.success(`${$t('page.scheduleManage.schedulerJob.start')}: ${row.jobName}`);
+    refresh();
+  }
+}
+
+async function handleStop(row: Api.ScheduleManage.SchedulerJobRecord) {
+  const { error } = await fetchStopSchedulerJob(row.id);
+  if (!error) {
+    window.$message?.success(`${$t('page.scheduleManage.schedulerJob.stop')}: ${row.jobName}`);
+    refresh();
+  }
+}
+
+/** ---------- run log modal ---------- */
+const runLogModalVisible = ref(false);
+const runLogJobName = ref('');
+const runLogJobId = ref<number | null>(null);
+const runLogStatusFilter = ref<string | null>(null);
+
+const runLogStatusOptions = computed(() => [
+  { label: $t('page.scheduleManage.schedulerJob.statusSuccess'), value: '1' },
+  { label: $t('page.scheduleManage.schedulerJob.statusFailed'), value: '2' }
+]);
+
+function renderLogStatusTag(status: string) {
+  if (status === '1') {
+    return <NTag type="success">{$t('page.scheduleManage.schedulerJob.statusSuccess')}</NTag>;
+  }
+  if (status === '2') {
+    return <NTag type="error">{$t('page.scheduleManage.schedulerJob.statusFailed')}</NTag>;
+  }
+  return <NTag>{status}</NTag>;
+}
+
+const runLogColumns = computed<DataTableColumns<Api.ScheduleManage.SchedulerJobRunLogRecord>>(() => [
+  {
+    key: 'startTime',
+    title: $t('page.scheduleManage.schedulerJob.startTime'),
+    align: 'center',
+    width: 170
+  },
+  {
+    key: 'endTime',
+    title: $t('page.scheduleManage.schedulerJob.endTime'),
+    align: 'center',
+    width: 170,
+    render: row => row.endTime ?? '-'
+  },
+  {
+    key: 'triggerType',
+    title: $t('page.scheduleManage.schedulerJob.triggerType'),
+    align: 'center',
+    width: 90,
+    render: row =>
+      row.triggerType === 'manual'
+        ? $t('page.scheduleManage.schedulerJob.triggerManual')
+        : $t('page.scheduleManage.schedulerJob.triggerScheduled')
+  },
+  {
+    key: 'status',
+    title: $t('page.scheduleManage.schedulerJob.logStatus'),
+    align: 'center',
+    width: 90,
+    render: row => renderLogStatusTag(row.status)
+  },
+  {
+    key: 'pid',
+    title: 'PID',
+    align: 'center',
+    width: 90,
+    render: row => row.pid ?? '-'
+  },
+  {
+    key: 'output',
+    title: $t('page.scheduleManage.schedulerJob.output'),
+    align: 'left',
+    minWidth: 260,
+    ellipsis: { tooltip: true }
+  },
+  {
+    key: 'operate',
+    title: $t('common.operate'),
+    align: 'center',
+    width: 80,
+    render: row => (
+      <NTooltip>
+        {{
+          default: () => $t('page.scheduleManage.schedulerJob.runLog'),
+          trigger: () => (
+            <NButton size="small" ghost type="info" onClick={() => handleViewRunLogContent(row)}>
+              {{ icon: () => h(IconIcRoundArticle) }}
+            </NButton>
+          )
+        }}
+      </NTooltip>
+    )
+  }
+]);
+
+/** ---------- run log content drawer ---------- */
+const runLogContentVisible = ref(false);
+const currentRunLog = ref<Api.ScheduleManage.SchedulerJobRunLogRecord | null>(null);
+
+function handleViewRunLogContent(row: Api.ScheduleManage.SchedulerJobRunLogRecord) {
+  currentRunLog.value = row;
+  runLogContentVisible.value = true;
+}
+
+async function fetchRunLog(params: any, _values?: Record<string, any>) {
+  const { data, error } = await fetchGetSchedulerJobRunLog({
+    current: params.current,
+    pageSize: params.pageSize,
+    jobId: runLogJobId.value ?? undefined,
+    status: runLogStatusFilter.value || undefined
+  });
+
+  if (error) {
+    return { total: 0, list: [] };
+  }
+
+  return { total: data.total, list: data.records };
+}
+
+// manual: do not auto query on page mount, query when the modal opens
+const {
+  table: { tableProps: runLogTableProps },
+  run: runLogSearch
+} = useNDataTable(fetchRunLog, { manual: true });
+
+function handleOpenRunLog(row: Api.ScheduleManage.SchedulerJobRecord) {
+  runLogJobId.value = row.id;
+  runLogJobName.value = row.jobName;
+  runLogStatusFilter.value = null;
+  runLogModalVisible.value = true;
+  runLogSearch({ current: 1, pageSize: 10, filters: {}, sorter: null }, {});
+}
+
+function handleRunLogFilterChange() {
+  runLogSearch({ current: 1, pageSize: 10, filters: {}, sorter: null }, {});
 }
 </script>
 
@@ -397,6 +674,9 @@ async function handleDelete(row: Api.ScheduleManage.SchedulerJobRecord) {
           <NDescriptionsItem :label="$t('page.scheduleManage.schedulerJob.period')">
             {{ detailRecord.periodInterval }} {{ periodTypeLabel(detailRecord.periodType) }}
           </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('page.scheduleManage.schedulerJob.logLevel')">
+            {{ detailRecord.logLevel }}
+          </NDescriptionsItem>
           <NDescriptionsItem :label="$t('page.scheduleManage.schedulerJob.firstRun')">
             {{ detailRecord.firstRunDate ?? '-' }}
             {{ detailRecord.firstRunTime ? normalizeTime(detailRecord.firstRunTime) : '' }}
@@ -464,6 +744,13 @@ async function handleDelete(row: Api.ScheduleManage.SchedulerJobRecord) {
             :placeholder="$t('page.scheduleManage.schedulerJob.periodInterval')"
           />
         </NFormItem>
+        <NFormItem :label="$t('page.scheduleManage.schedulerJob.logLevel')" path="logLevel">
+          <NSelect
+            v-model:value="jobModel.logLevel"
+            :options="logLevelOptions"
+            :placeholder="$t('page.scheduleManage.schedulerJob.logLevel')"
+          />
+        </NFormItem>
         <NFormItem :label="$t('page.scheduleManage.schedulerJob.firstRunDate')" path="firstRunDate">
           <NDatePicker
             v-model:formatted-value="jobModel.firstRunDate"
@@ -491,5 +778,43 @@ async function handleDelete(row: Api.ScheduleManage.SchedulerJobRecord) {
         </NSpace>
       </template>
     </NModal>
+
+    <NModal
+      v-model:show="runLogModalVisible"
+      :title="`${$t('page.scheduleManage.schedulerJob.runLog')}: ${runLogJobName}`"
+      preset="card"
+      class="w-1100px"
+      display-directive="show"
+    >
+      <div class="flex-y-center justify-end gap-12px pb-12px">
+        <span class="text-14px">{{ $t('page.scheduleManage.schedulerJob.logStatus') }}</span>
+        <NSelect
+          v-model:value="runLogStatusFilter"
+          clearable
+          :options="runLogStatusOptions"
+          class="w-140px"
+          :placeholder="$t('page.scheduleManage.schedulerJob.logStatus')"
+          @update:value="handleRunLogFilterChange"
+        />
+      </div>
+      <NDataTable
+        :columns="runLogColumns"
+        :data="runLogTableProps.data"
+        :loading="runLogTableProps.loading"
+        :pagination="runLogTableProps.pagination"
+        remote
+        :row-key="(row: Api.ScheduleManage.SchedulerJobRunLogRecord) => row.id"
+        size="small"
+        max-height="480"
+      />
+    </NModal>
+
+    <RunLogContentModal
+      v-model:show="runLogContentVisible"
+      :id="currentRunLog?.id ?? null"
+      :script-name="currentRunLog?.scriptName ?? ''"
+      :output="currentRunLog?.output ?? ''"
+      :status="currentRunLog?.status ?? ''"
+    />
   </ConfigProvider>
 </template>

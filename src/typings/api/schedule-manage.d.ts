@@ -8,6 +8,9 @@ declare namespace Api {
     /** scheduler job period type */
     type SchedulerJobPeriodType = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year';
 
+    /** scheduler job log level, injected to the script process as the JOB_LOG_LEVEL env var */
+    type SchedulerJobLogLevel = 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+
     /** scheduler job search params */
     interface SchedulerJobSearchParams {
       /** page number */
@@ -28,6 +31,7 @@ declare namespace Api {
       description: string;
       periodType: SchedulerJobPeriodType;
       periodInterval: number;
+      logLevel: SchedulerJobLogLevel;
       /** "YYYY-MM-DD" or null */
       firstRunDate: string | null;
       /** "HH:mm:ss" (backend may return "0 days HH:mm:ss"), or null */
@@ -38,12 +42,63 @@ declare namespace Api {
       lastRunTime: string | null;
       /** last run status code, plain string */
       lastRunStatus: string;
+      /** "1" enabled, "2" disabled */
+      enabled: '1' | '2';
+      /** whether the job is currently running */
+      running: boolean;
+      /** "YYYY-MM-DD HH:mm:ss" */
+      ts: string;
       /** "YYYY-MM-DD HH:mm:ss" */
       createTime: string;
       createBy: string;
       /** "YYYY-MM-DD HH:mm:ss" */
       updateTime: string;
       updateBy: string;
+    }
+
+    /** scheduler job run log search params */
+    interface SchedulerJobRunLogSearchParams {
+      current: number;
+      pageSize: number;
+      jobId?: number | null;
+      /** "1" success, "2" failed */
+      status?: string | null;
+    }
+
+    /** scheduler job run log record */
+    interface SchedulerJobRunLogRecord {
+      id: number;
+      jobId: number;
+      scriptName: string;
+      /** "manual" or "scheduled" */
+      triggerType: string;
+      /** "1" success, "2" failed */
+      status: string;
+      /** "YYYY-MM-DD HH:mm:ss" */
+      startTime: string;
+      /** "YYYY-MM-DD HH:mm:ss" or null while running */
+      endTime: string | null;
+      pid: number | null;
+      /** tail summary of the output (fallback when the log file no longer exists) */
+      output: string;
+    }
+
+    /** run log content (line-based file view, 1-based line numbers) */
+    interface SchedulerJobRunLogContent {
+      id: number;
+      /** false = log file no longer exists, fall back to the list output field */
+      fileExists: boolean;
+      /** task still running, the file keeps growing */
+      running: boolean;
+      totalLines: number;
+      startLine: number;
+      endLine: number;
+      /** lines without trailing newlines, in file order */
+      lines: string[];
+      /** startLine > 1 */
+      hasMoreBefore: boolean;
+      /** endLine < totalLines */
+      hasMoreAfter: boolean;
     }
 
     /** add scheduler job params */
@@ -53,6 +108,8 @@ declare namespace Api {
       description?: string;
       periodType: SchedulerJobPeriodType;
       periodInterval?: number;
+      /** defaults to INFO when omitted */
+      logLevel?: SchedulerJobLogLevel;
       /** "YYYY-MM-DD" or null */
       firstRunDate?: string | null;
       /** "HH:mm:ss" or null */
@@ -67,6 +124,8 @@ declare namespace Api {
       description?: string | null;
       periodType?: SchedulerJobPeriodType | null;
       periodInterval?: number | null;
+      /** omit = keep unchanged; value is upper-cased before saving */
+      logLevel?: SchedulerJobLogLevel | null;
       /** "YYYY-MM-DD" or null */
       firstRunDate?: string | null;
       /** "HH:mm:ss" or null */

@@ -1,3 +1,4 @@
+import { getServiceBaseURL } from '@/utils/service';
 import { request } from '../request';
 
 /** get scheduler job list */
@@ -43,6 +44,68 @@ export function fetchDeleteSchedulerJob(id: number) {
     method: 'post',
     data: { id }
   });
+}
+
+/** start scheduler job */
+export function fetchStartSchedulerJob(id: number) {
+  return request<null>({
+    url: '/scheduleManage/startSchedulerJob',
+    method: 'post',
+    data: { id }
+  });
+}
+
+/** stop scheduler job */
+export function fetchStopSchedulerJob(id: number) {
+  return request<null>({
+    url: '/scheduleManage/stopSchedulerJob',
+    method: 'post',
+    data: { id }
+  });
+}
+
+/** run scheduler job once immediately */
+export function fetchRunSchedulerJobOnce(id: number) {
+  return request<null>({
+    url: '/scheduleManage/runSchedulerJobOnce',
+    method: 'post',
+    data: { id }
+  });
+}
+
+/** get scheduler job run log (paginated) */
+export function fetchGetSchedulerJobRunLog(params: Api.ScheduleManage.SchedulerJobRunLogSearchParams) {
+  return request<Api.Common.PaginatingQueryRecord<Api.ScheduleManage.SchedulerJobRunLogRecord>>({
+    url: '/scheduleManage/getSchedulerJobRunLog',
+    method: 'get',
+    params
+  });
+}
+
+/**
+ * get run log content line by line.
+ * first request without before/after returns the last `limit` lines;
+ * `before` = current startLine - 1 loads earlier lines;
+ * `after` = current endLine loads/polls newer lines
+ */
+export function fetchSchedulerJobRunLogContent(params: {
+  id: number;
+  limit?: number;
+  before?: number;
+  after?: number;
+}) {
+  return request<Api.ScheduleManage.SchedulerJobRunLogContent>({
+    url: '/scheduleManage/getSchedulerJobRunLogContent',
+    method: 'get',
+    params
+  });
+}
+
+/** download the full run log file (text/plain stream, no auth needed) */
+export function getSchedulerJobRunLogDownloadUrl(id: number) {
+  const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
+  const { baseURL } = getServiceBaseURL(import.meta.env, isHttpProxy);
+  return `${baseURL}/scheduleManage/downloadSchedulerJobRunLog?id=${id}`;
 }
 
 /** get script info list */
