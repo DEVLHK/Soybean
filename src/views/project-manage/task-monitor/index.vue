@@ -207,6 +207,7 @@ watch(expandedMember, member => {
 /** expanded detail table columns */
 const detailColumns: DataTableColumns<Api.ProjectManage.MemberTaskDetailRecord> = [
   { key: 'projectId', title: '项目编号', align: 'center', width: 140 },
+  { key: 'member', title: '成员', align: 'center', width: 120 },
   { key: 'id', title: 'ID', align: 'center', width: 70 },
   { key: 'taskType', title: '任务类型', align: 'center', width: 110 },
   { key: 'taskSource', title: '任务来源', align: 'center', width: 110 },
@@ -261,6 +262,13 @@ const columns = computed<DataTableColumns<Api.ProjectManage.MemberTaskSummaryRec
     align: 'center',
     width: 100,
     render: row => (row.overdue > 0 ? <NTag type="error">{row.overdue}</NTag> : row.overdue)
+  },
+  {
+    key: 'dueYesterday',
+    title: '上日逾期任务',
+    align: 'center',
+    width: 120,
+    render: row => (row.dueYesterday > 0 ? <NTag type="warning">{row.dueYesterday}</NTag> : row.dueYesterday)
   },
   {
     key: 'dueToday',

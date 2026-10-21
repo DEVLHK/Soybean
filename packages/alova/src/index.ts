@@ -37,7 +37,7 @@ export const createAlovaRequest = <
 
   const instance = createAlova({
     ...customConfig,
-    timeout: customConfig.timeout ?? 10 * 1000,
+    timeout: customConfig.timeout ?? 30 * 1000,
     requestAdapter: (customConfig.requestAdapter as any) ?? adapterFetch(),
     statesHook: VueHook,
     beforeRequest: onAuthRequired(options.onRequest as any),

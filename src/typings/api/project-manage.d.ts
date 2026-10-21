@@ -112,6 +112,8 @@ declare namespace Api {
       dueToday: number;
       notDue: number;
       overdue: number;
+      /** 上一日逾期任务数 */
+      dueYesterday: number;
     }
 
     /** 成员任务明细查询参数 */
