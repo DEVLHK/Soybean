@@ -727,6 +727,15 @@ export const generatedRoutes: GeneratedRoute[] = [
             }
           }
         ]
+      },
+      {
+        name: 'project-manage_task-monitor',
+        path: '/project-manage/task-monitor',
+        component: 'view.project-manage_task-monitor',
+        meta: {
+          title: 'project-manage_task-monitor',
+          i18nKey: 'route.project-manage_task-monitor'
+        }
       }
     ]
   },

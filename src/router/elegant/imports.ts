@@ -64,6 +64,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   "pro-naive_table_row-edit": () => import("@/views/pro-naive/table/row-edit/index.vue"),
   "project-manage_bug-manage_bug-review": () => import("@/views/project-manage/bug-manage/bug-review/index.vue"),
   "project-manage_bug-manage_failed-bug": () => import("@/views/project-manage/bug-manage/failed-bug/index.vue"),
+  "project-manage_task-monitor": () => import("@/views/project-manage/task-monitor/index.vue"),
   "schedule-manage_scheduler-job": () => import("@/views/schedule-manage/scheduler-job/index.vue"),
   "schedule-manage_script-manage": () => import("@/views/schedule-manage/script-manage/index.vue"),
   "user-center": () => import("@/views/user-center/index.vue"),

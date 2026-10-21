@@ -232,6 +232,7 @@ const local: App.I18n.Schema = {
     home: 'Home',
     'project-manage': 'Project Management',
     'project-manage_bug-manage': 'Bug Management',
+    'project-manage_task-monitor': 'Member Task Monitoring',
     'project-manage_bug-manage_failed-bug': 'Failed Bug Management',
     'project-manage_bug-manage_bug-review': 'Unanalyzed Failed Bugs',
     'schedule-manage': 'Scheduled Tasks',

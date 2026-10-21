@@ -86,5 +86,63 @@ declare namespace Api {
       /** "1" reviewed, "2" not reviewed */
       reviewStatus: '1' | '2' | null;
     }
+
+    /** 成员任务监控汇总查询参数 */
+    interface MemberTaskSummaryParams {
+      current: number;
+      pageSize: number;
+      /** 统计日期 "YYYY-MM-DD"，缺省为今天 */
+      date?: string | null;
+      team?: string | null;
+      member?: string | null;
+      projectId?: string | null;
+      isOverdue?: boolean | null;
+      /** 到期日期 "YYYY-MM-DD"，按天匹配 */
+      dueDate?: string | null;
+    }
+
+    /** 成员任务监控汇总记录（每成员每天一条） */
+    interface MemberTaskSummaryRecord {
+      member: string;
+      team: string;
+      /** 进行中 + 未开始 */
+      uncompleted: number;
+      completedYesterday: number;
+      completedLast7Days: number;
+      dueToday: number;
+      notDue: number;
+      overdue: number;
+    }
+
+    /** 成员任务明细查询参数 */
+    interface MemberTaskDetailSearchParams {
+      current?: number;
+      pageSize?: number;
+      projectId?: string | null;
+      member?: string | null;
+      team?: string | null;
+      isOverdue?: boolean | null;
+      /** 到期日期（毫秒时间戳），按天匹配 */
+      dueDate?: number | null;
+      execution?: string | null;
+    }
+
+    /** 成员任务明细记录 */
+    interface MemberTaskDetailRecord {
+      id: number;
+      projectId: string;
+      member: string;
+      team: string;
+      task: string;
+      taskType: string;
+      taskSource: string;
+      execution: string;
+      isOverdue: boolean;
+      /** "YYYY-MM-DD" */
+      dueDate: string;
+      /** "YYYY-MM-DD HH:mm:ss" */
+      createTime: string;
+      status: string;
+    }
   }
 }

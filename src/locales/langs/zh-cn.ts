@@ -228,6 +228,7 @@ const local: App.I18n.Schema = {
     home: '首页',
     'project-manage': '项目管理',
     'project-manage_bug-manage': '缺陷管理',
+    'project-manage_task-monitor': '成员任务监控',
     'project-manage_bug-manage_failed-bug': '失败缺陷管理',
     'project-manage_bug-manage_bug-review': '待分析失败缺陷',
     'schedule-manage': '定时任务',

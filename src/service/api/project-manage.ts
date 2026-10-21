@@ -46,3 +46,21 @@ export function fetchReviewBug(data: Pick<Api.ProjectManage.FailedBugRecord, 'pr
     data
   });
 }
+
+/** get member task monitoring summary (aggregated per member for a date) */
+export function fetchGetMemberTaskSummary(params: Api.ProjectManage.MemberTaskSummaryParams) {
+  return request<Api.Common.PaginatingQueryRecord<Api.ProjectManage.MemberTaskSummaryRecord>>({
+    url: '/projectManage/taskMonitor/getMemberTaskSummary',
+    method: 'get',
+    params
+  });
+}
+
+/** get member task monitoring detail list (paginated) */
+export function fetchGetMemberTaskDetail(params: Api.ProjectManage.MemberTaskDetailSearchParams) {
+  return request<Api.Common.PaginatingQueryRecord<Api.ProjectManage.MemberTaskDetailRecord>>({
+    url: '/projectManage/taskMonitor/getMemberTaskDetail',
+    method: 'get',
+    params
+  });
+}

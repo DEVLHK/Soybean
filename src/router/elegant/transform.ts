@@ -245,6 +245,7 @@ const routeMap: RouteMap = {
   "project-manage_bug-manage": "/project-manage/bug-manage",
   "project-manage_bug-manage_bug-review": "/project-manage/bug-manage/bug-review",
   "project-manage_bug-manage_failed-bug": "/project-manage/bug-manage/failed-bug",
+  "project-manage_task-monitor": "/project-manage/task-monitor",
   "schedule-manage": "/schedule-manage",
   "schedule-manage_scheduler-job": "/schedule-manage/scheduler-job",
   "schedule-manage_script-manage": "/schedule-manage/script-manage",
