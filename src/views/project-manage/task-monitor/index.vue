@@ -214,7 +214,7 @@ const detailColumns: DataTableColumns<Api.ProjectManage.MemberTaskDetailRecord> 
   { key: 'execution', title: '所属执行', align: 'center', width: 120 },
   {
     key: 'isOverdue',
-    title: '是否超时',
+    title: '是否逾期',
     align: 'center',
     width: 100,
     render: row => (row.isOverdue ? <NTag type="error">是</NTag> : <NTag type="success">否</NTag>)
@@ -258,17 +258,10 @@ const columns = computed<DataTableColumns<Api.ProjectManage.MemberTaskSummaryRec
   },
   {
     key: 'overdue',
-    title: '超时任务',
+    title: '当前逾期任务数',
     align: 'center',
     width: 100,
     render: row => (row.overdue > 0 ? <NTag type="error">{row.overdue}</NTag> : row.overdue)
-  },
-  {
-    key: 'dueYesterday',
-    title: '上日逾期任务',
-    align: 'center',
-    width: 120,
-    render: row => (row.dueYesterday > 0 ? <NTag type="warning">{row.dueYesterday}</NTag> : row.dueYesterday)
   },
   {
     key: 'dueToday',
@@ -283,6 +276,13 @@ const columns = computed<DataTableColumns<Api.ProjectManage.MemberTaskSummaryRec
     align: 'center',
     width: 110,
     render: row => (row.notDue > 0 ? <NTag type="info">{row.notDue}</NTag> : row.notDue)
+  },
+  {
+    key: 'dueYesterday',
+    title: '上日逾期任务',
+    align: 'center',
+    width: 120,
+    render: row => (row.dueYesterday > 0 ? <NTag type="warning">{row.dueYesterday}</NTag> : row.dueYesterday)
   },
   {
     key: 'completedYesterday',
@@ -337,7 +337,7 @@ onMounted(() => {
   <ConfigProvider>
     <div class="h-full flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
       <NCard :bordered="false" size="small" class="card-wrapper">
-        <NCollapse>
+        <NCollapse :default-expanded-names="['task-monitor-search']">
           <NCollapseItem title="搜索" name="task-monitor-search">
             <NForm :model="searchValues" label-placement="left" :label-width="80">
               <NGrid responsive="screen" item-responsive>
@@ -355,7 +355,7 @@ onMounted(() => {
                     placeholder="请选择团队"
                   />
                 </NFormItemGi>
-                <NFormItemGi label="是否超时" path="overdue" span="24 s:12 m:6" class="pr-24px">
+                <NFormItemGi label="是否逾期" path="overdue" span="24 s:12 m:6" class="pr-24px">
                   <NSelect
                     v-model:value="searchValues.overdue"
                     clearable
@@ -402,8 +402,11 @@ onMounted(() => {
         </NCollapse>
       </NCard>
       <NCard :bordered="false" size="small" class="task-monitor-table-card card-wrapper flex-1 min-h-0">
-        <div class="mb-8px flex-y-center flex-none">
-          <NCheckbox :checked="showSummary" @update:checked="handleSummaryToggle">汇总</NCheckbox>
+        <div class="mb-8px flex-y-center justify-end flex-none">
+          <NSwitch v-model:value="showSummary" class="view-switch" @update:value="handleSummaryToggle">
+            <template #checked>汇总</template>
+            <template #unchecked>明细</template>
+          </NSwitch>
         </div>
         <NDataTable
           v-if="showSummary"

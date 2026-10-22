@@ -30,7 +30,7 @@ const visible = defineModel<boolean>('visible', {
 });
 
 const { formRef, validate, restoreValidation } = useNaiveForm();
-const { defaultRequiredRule } = useFormRules();
+const { defaultRequiredRule, formRules } = useFormRules();
 
 const title = computed(() => {
   const titles: Record<NaiveUI.TableOperateType, string> = {
@@ -67,13 +67,16 @@ function createDefaultModel(): Model {
 
 type RuleKey = Extract<keyof Model, 'userName' | 'status'> | 'password';
 
-const rules: Record<RuleKey, App.Global.FormRule> = {
-  userName: defaultRequiredRule,
-  status: defaultRequiredRule,
-  password: {
-    ...defaultRequiredRule,
-    trigger: ['input', 'blur']
-  }
+const rules: Record<RuleKey, App.Global.FormRule[]> = {
+  // same format as the login page: required + 4-16 chars (中文/字母/数字/_/-)
+  userName: formRules.userName,
+  status: [defaultRequiredRule],
+  password: [
+    {
+      ...defaultRequiredRule,
+      trigger: ['input', 'blur']
+    }
+  ]
 };
 
 /** the enabled role options */
