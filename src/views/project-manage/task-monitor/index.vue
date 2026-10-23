@@ -39,8 +39,6 @@ const defaultSearchValues: TaskSearchValues = {
 const searchValues = ref<TaskSearchValues>({ ...defaultSearchValues });
 /** filters take effect on 搜索 click */
 const appliedFilters = ref<TaskSearchValues>({ ...defaultSearchValues });
-/** currently expanded member rows (controlled) */
-const expandedKeys = ref<Array<string | number>>([]);
 
 const overdueOptions = [
   { label: '是', value: '1' },
@@ -154,8 +152,12 @@ async function loadDetail() {
 }
 
 /** ---------- expand detail of the summary row ---------- */
-/** detail of the currently expanded member (paginated) */
-const expandedMember = computed(() => (expandedKeys.value[0] as string | undefined) ?? null);
+/** summary row opened in the right drawer */
+const activeSummaryRow = ref<Api.ProjectManage.MemberTaskSummaryRecord | null>(null);
+const drawerVisible = ref(false);
+
+/** detail of the currently opened member (paginated) */
+const expandedMember = computed(() => activeSummaryRow.value?.member ?? null);
 
 const memberDetailRecords = ref<Api.ProjectManage.MemberTaskDetailRecord[]>([]);
 const memberDetailLoading = ref(false);
@@ -182,10 +184,16 @@ async function loadMemberDetailPage() {
 
   memberDetailLoading.value = true;
 
+  const { project, team, overdue, execution } = toRaw(appliedFilters.value);
+
   const { error, data } = await fetchGetMemberTaskDetail({
     current: memberDetailPagination.page,
     pageSize: memberDetailPagination.pageSize,
-    member: expandedMember.value
+    member: expandedMember.value,
+    projectId: project || undefined,
+    team: team || undefined,
+    isOverdue: overdue === null ? undefined : overdue === '1',
+    execution: execution || undefined
   });
 
   memberDetailLoading.value = false;
@@ -208,7 +216,23 @@ watch(expandedMember, member => {
 const detailColumns: DataTableColumns<Api.ProjectManage.MemberTaskDetailRecord> = [
   { key: 'projectId', title: '项目编号', align: 'center', width: 140 },
   { key: 'member', title: '成员', align: 'center', width: 120 },
-  { key: 'id', title: 'ID', align: 'center', width: 70 },
+  {
+    key: 'id',
+    title: 'ID',
+    align: 'center',
+    width: 70,
+    render: row => {
+      const url =
+        row.taskType === 'BUG'
+          ? `https://pms.hisunglobal.com/bug-view-${row.id}.html`
+          : `https://pms.hisunglobal.com/task-view-${row.id}.html`;
+      return (
+        <a href={url} target="_blank" rel="noopener noreferrer" style="color: #1890ff; text-decoration: underline;">
+          {row.id}
+        </a>
+      );
+    }
+  },
   { key: 'taskType', title: '任务类型', align: 'center', width: 110 },
   { key: 'taskSource', title: '任务来源', align: 'center', width: 110 },
   { key: 'execution', title: '所属执行', align: 'center', width: 120 },
@@ -224,20 +248,6 @@ const detailColumns: DataTableColumns<Api.ProjectManage.MemberTaskDetailRecord> 
 ];
 
 const columns = computed<DataTableColumns<Api.ProjectManage.MemberTaskSummaryRecord>>(() => [
-  {
-    type: 'expand',
-    renderExpand: () => (
-      <NDataTable
-        columns={detailColumns}
-        data={memberDetailRecords.value}
-        loading={memberDetailLoading.value}
-        remote
-        size="small"
-        pagination={memberDetailPagination}
-        rowKey={(task: Api.ProjectManage.MemberTaskDetailRecord) => task.id}
-      />
-    )
-  },
   {
     key: 'member',
     title: '成员',
@@ -302,18 +312,28 @@ const columns = computed<DataTableColumns<Api.ProjectManage.MemberTaskSummaryRec
   }
 ]);
 
-function handleExpandedKeys(keys: Array<string | number>) {
-  // only allow one row expanded at a time (accordion)
-  expandedKeys.value = keys.slice(-1);
+/** click a summary row to open the detail modal */
+function handleSummaryRowClick(row: Api.ProjectManage.MemberTaskSummaryRecord) {
+  activeSummaryRow.value = row;
+  drawerVisible.value = true;
 }
+
+/** summary row props: cursor + click to open drawer */
+const summaryRowProps = (row: Api.ProjectManage.MemberTaskSummaryRecord) => ({
+  style: 'cursor: pointer;',
+  onClick: () => handleSummaryRowClick(row)
+});
 
 function handleSummaryToggle(checked: boolean) {
   showSummary.value = checked;
-  expandedKeys.value = [];
+  if (checked) {
+    // 汇总模式只保留成员和团队搜索条件
+    searchValues.value.dueDate = null;
+  }
+  handleSearch();
 }
 
 function handleSearch() {
-  expandedKeys.value = [];
   appliedFilters.value = { ...toRaw(searchValues.value) };
   summaryPagination.page = 1;
   loadSummary();
@@ -322,7 +342,6 @@ function handleSearch() {
 }
 
 function handleReset() {
-  expandedKeys.value = [];
   Object.assign(searchValues.value, { ...defaultSearchValues });
   handleSearch();
 }
@@ -363,7 +382,7 @@ onMounted(() => {
                     placeholder="请选择"
                   />
                 </NFormItemGi>
-                <NFormItemGi label="到期日期" path="dueDate" span="24 s:12 m:6" class="pr-24px">
+                <NFormItemGi v-if="!showSummary" label="到期日期" path="dueDate" span="24 s:12 m:6" class="pr-24px">
                   <NDatePicker
                     v-model:value="searchValues.dueDate"
                     type="date"
@@ -419,8 +438,7 @@ onMounted(() => {
           size="small"
           :pagination="summaryPagination"
           :row-key="(row: Api.ProjectManage.MemberTaskSummaryRecord) => row.member"
-          :expanded-row-keys="expandedKeys"
-          @update:expanded-row-keys="handleExpandedKeys"
+          :row-props="summaryRowProps"
         />
         <NDataTable
           v-else
@@ -436,6 +454,38 @@ onMounted(() => {
         />
       </NCard>
     </div>
+    <!-- member detail modal: summary pinned on top, detail table scrolls below -->
+    <NModal
+      v-model:show="drawerVisible"
+      preset="card"
+      :title="`成员任务明细 - ${activeSummaryRow?.member ?? ''}`"
+      class="w-1350px"
+    >
+      <div v-if="activeSummaryRow" class="flex flex-col gap-12px">
+        <NDescriptions bordered :column="3" size="small" class="flex-none" label-placement="left">
+          <NDescriptionsItem label="成员">{{ activeSummaryRow.member }}</NDescriptionsItem>
+          <NDescriptionsItem label="团队">{{ activeSummaryRow.team }}</NDescriptionsItem>
+          <NDescriptionsItem label="未完成任务总数">{{ activeSummaryRow.uncompleted }}</NDescriptionsItem>
+          <NDescriptionsItem label="当前逾期任务数">{{ activeSummaryRow.overdue }}</NDescriptionsItem>
+          <NDescriptionsItem label="今天到期任务">{{ activeSummaryRow.dueToday }}</NDescriptionsItem>
+          <NDescriptionsItem label="未到期任务">{{ activeSummaryRow.notDue }}</NDescriptionsItem>
+          <NDescriptionsItem label="上日逾期任务">{{ activeSummaryRow.dueYesterday }}</NDescriptionsItem>
+          <NDescriptionsItem label="上日完成任务数">{{ activeSummaryRow.completedYesterday }}</NDescriptionsItem>
+          <NDescriptionsItem label="过去7天完成任务数">{{ activeSummaryRow.completedLast7Days }}</NDescriptionsItem>
+        </NDescriptions>
+        <NDataTable
+          class="flex-1"
+          :columns="detailColumns"
+          :data="memberDetailRecords"
+          :loading="memberDetailLoading"
+          remote
+          size="small"
+          max-height="420"
+          :pagination="memberDetailPagination"
+          :row-key="(row: Api.ProjectManage.MemberTaskDetailRecord) => row.id"
+        />
+      </div>
+    </NModal>
   </ConfigProvider>
 </template>
 
