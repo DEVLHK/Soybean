@@ -153,11 +153,11 @@ const paramColumns = computed<DataTableColumns<Api.ScheduleManage.ScriptParam>>(
     width: 80
   },
   {
-    key: 'optional',
-    title: $t('page.scheduleManage.scriptManage.optional'),
+    key: 'mandatory',
+    title: $t('page.scheduleManage.scriptManage.mandatory'),
     align: 'center',
     width: 80,
-    render: row => (row.optional ? $t('common.yesOrNo.yes') : $t('common.yesOrNo.no'))
+    render: row => (row.mandatory ? $t('common.yesOrNo.yes') : $t('common.yesOrNo.no'))
   },
   {
     key: 'default',
@@ -193,7 +193,8 @@ interface ParamEditRow {
   param_name: string;
   description: string;
   param_type: string | null;
-  optional: boolean;
+  /** true = required, false = optional (inverted from the old optional flag) */
+  mandatory: boolean;
   default: string;
 }
 
@@ -255,7 +256,7 @@ function createDefaultScriptModel(): ScriptFormModel {
 }
 
 function createDefaultParamRow(): ParamEditRow {
-  return { param_name: '', description: '', param_type: 'String', optional: false, default: '' };
+  return { param_name: '', description: '', param_type: 'String', mandatory: true, default: '' };
 }
 
 function handleAdd() {
@@ -279,7 +280,7 @@ async function handleEdit(row: Api.ScheduleManage.ScriptInfoRecord) {
     param_name: param.param_name,
     description: param.description,
     param_type: param.param_type,
-    optional: param.optional,
+    mandatory: param.mandatory,
     default: param.default === null || param.default === undefined ? '' : String(param.default)
   }));
   restoreValidation();
@@ -296,7 +297,7 @@ async function handleEdit(row: Api.ScheduleManage.ScriptInfoRecord) {
       param_name: param.param_name,
       description: param.description,
       param_type: param.param_type,
-      optional: param.optional,
+      mandatory: param.mandatory,
       default: param.default === null || param.default === undefined ? '' : String(param.default)
     }));
   }
@@ -307,16 +308,14 @@ function collectParams(): Api.ScheduleManage.ScriptParam[] {
     param_name: row.param_name.trim(),
     description: row.description.trim(),
     param_type: row.param_type ?? 'String',
-    optional: row.optional,
+    mandatory: row.mandatory,
     default: row.default === '' ? null : row.default
   }));
 }
 
-/** every param row must have all fields filled */
+/** every param row must have name/description/type filled (optional flag & default value are not required) */
 function validateParamRows(): boolean {
-  const invalid = paramRows.value.some(
-    row => !row.param_name.trim() || !row.description.trim() || !row.param_type || row.default.trim() === ''
-  );
+  const invalid = paramRows.value.some(row => !row.param_name.trim() || !row.description.trim() || !row.param_type);
 
   if (invalid) {
     window.$message?.error($t('page.scheduleManage.scriptManage.paramRequired'));
@@ -560,8 +559,8 @@ async function handleDelete(row: Api.ScheduleManage.ScriptInfoRecord) {
               style="width: 150px"
               :placeholder="$t('page.scheduleManage.scriptManage.defaultValue')"
             />
-            <NCheckbox v-model:checked="value.optional" size="small" style="width: 50px" class="whitespace-nowrap">
-              {{ $t('page.scheduleManage.scriptManage.optional') }}
+            <NCheckbox v-model:checked="value.mandatory" size="small" style="width: 50px" class="whitespace-nowrap">
+              {{ $t('page.scheduleManage.scriptManage.mandatory') }}
             </NCheckbox>
             <NInput
               v-model:value="value.description"

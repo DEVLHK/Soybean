@@ -17,6 +17,8 @@ import {
   fetchGetSchedulerJobDetail,
   fetchGetSchedulerJobList,
   fetchGetSchedulerJobRunLog,
+  fetchGetScriptInfoDetail,
+  fetchGetScriptInfoList,
   fetchStartSchedulerJob,
   fetchStopSchedulerJob,
   fetchUpdateSchedulerJob
@@ -292,8 +294,8 @@ interface JobFormModel {
   periodType: Api.ScheduleManage.SchedulerJobPeriodType | null;
   periodInterval: number | null;
   logLevel: Api.ScheduleManage.SchedulerJobLogLevel;
-  firstRunDate: string | null;
-  firstRunTime: string | null;
+  /** "YYYY-MM-DD HH:mm:ss"; split into date/time for the api on submit */
+  firstRun: string | null;
 }
 
 /** original logLevel of the row being edited; add = null. Unchanged values are omitted on update */
@@ -302,6 +304,60 @@ const originalLogLevel = ref<Api.ScheduleManage.SchedulerJobLogLevel | null>(nul
 const logLevelOptions = computed(() =>
   (['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] as const).map(level => ({ label: level, value: level }))
 );
+
+/** script name options for the job form, from script_info list */
+const scriptNameOptions = ref<{ label: string; value: string }[]>([]);
+
+async function loadScriptNameOptions() {
+  const { error, data } = await fetchGetScriptInfoList({ current: 1, pageSize: 500 });
+  if (!error && data) {
+    scriptNameOptions.value = data.records.map(r => ({ label: r.scriptName, value: r.scriptName }));
+  }
+}
+
+/** ---------- script input params (initialized from script_info.params) ---------- */
+interface JobParamRow {
+  param_name: string;
+  description: string;
+  param_type: string;
+  /** true = must be filled before submit */
+  mandatory: boolean;
+  value: string;
+}
+
+const jobParamRows = ref<JobParamRow[]>([]);
+
+/** when the picked script changes, initialize the param input rows from its definition */
+async function handleScriptChange(scriptName: string | null) {
+  jobParamRows.value = [];
+  if (!scriptName) {
+    return;
+  }
+  const { error, data } = await fetchGetScriptInfoDetail(scriptName);
+  if (!error && data) {
+    jobParamRows.value = (data.params ?? []).map(param => ({
+      param_name: param.param_name,
+      description: param.description,
+      param_type: param.param_type,
+      mandatory: param.mandatory,
+      value: param.default === null || param.default === undefined ? '' : String(param.default)
+    }));
+  }
+}
+
+/** mandatory script params must be filled before submit */
+function validateJobParams(): boolean {
+  const missing = jobParamRows.value.find(row => row.mandatory && row.value.trim() === '');
+  if (missing) {
+    window.$message?.error(`${missing.param_name} ${$t('form.required')}`);
+    return false;
+  }
+  return true;
+}
+
+function collectJobParams(): Record<string, string> {
+  return Object.fromEntries(jobParamRows.value.map(row => [row.param_name, row.value.trim()]));
+}
 
 function renderLogLevelTag(level: Api.ScheduleManage.SchedulerJobLogLevel) {
   const tagMap: Record<Api.ScheduleManage.SchedulerJobLogLevel, NaiveUI.ThemeColor> = {
@@ -346,8 +402,7 @@ function createDefaultJobModel(): JobFormModel {
     periodType: 'day',
     periodInterval: 1,
     logLevel: 'INFO',
-    firstRunDate: null,
-    firstRunTime: null
+    firstRun: null
   };
 }
 
@@ -355,6 +410,7 @@ function handleAdd() {
   editingId.value = null;
   originalLogLevel.value = null;
   Object.assign(jobModel, createDefaultJobModel());
+  loadScriptNameOptions();
   restoreValidation();
   operateModalVisible.value = true;
 }
@@ -369,9 +425,11 @@ function handleEdit(row: Api.ScheduleManage.SchedulerJobRecord) {
     periodType: row.periodType,
     periodInterval: row.periodInterval,
     logLevel: row.logLevel,
-    firstRunDate: row.firstRunDate,
-    firstRunTime: row.firstRunTime ? normalizeTime(row.firstRunTime) : null
+    firstRun: row.firstRunDate
+      ? `${row.firstRunDate}${row.firstRunTime ? ` ${normalizeTime(row.firstRunTime)}` : ''}`
+      : null
   });
+  loadScriptNameOptions();
   restoreValidation();
   operateModalVisible.value = true;
 }
@@ -379,7 +437,14 @@ function handleEdit(row: Api.ScheduleManage.SchedulerJobRecord) {
 async function handleSubmit() {
   await validate();
 
+  if (!validateJobParams()) {
+    return;
+  }
+
   submitLoading.value = true;
+
+  // split the datetime picker value back into the api's date + time fields
+  const [firstRunDate, firstRunTime] = jobModel.firstRun ? jobModel.firstRun.split(' ') : [null, null];
 
   const payload = {
     jobName: jobModel.jobName,
@@ -389,8 +454,10 @@ async function handleSubmit() {
     periodInterval: jobModel.periodInterval ?? 1,
     // add always sends logLevel (defaults INFO); edit sends it only when changed (omit = keep unchanged)
     logLevel: jobModel.logLevel,
-    firstRunDate: jobModel.firstRunDate,
-    firstRunTime: jobModel.firstRunTime
+    firstRunDate,
+    firstRunTime,
+    // script input param values (key = param_name); backend persists and injects at run time
+    params: collectJobParams()
   };
 
   let request: Promise<{ error: unknown }>;
@@ -708,18 +775,12 @@ function handleRunLogFilterChange() {
       v-model:show="operateModalVisible"
       :title="operateModalTitle"
       preset="card"
-      class="w-600px"
+      class="w-800px"
       display-directive="show"
     >
       <NForm ref="formRef" :model="jobModel" :rules="jobRules" label-placement="left" :label-width="110">
         <NFormItem :label="$t('page.scheduleManage.schedulerJob.jobName')" path="jobName">
           <NInput v-model:value="jobModel.jobName" :placeholder="$t('page.scheduleManage.schedulerJob.jobName')" />
-        </NFormItem>
-        <NFormItem :label="$t('page.scheduleManage.schedulerJob.scriptName')" path="scriptName">
-          <NInput
-            v-model:value="jobModel.scriptName"
-            :placeholder="$t('page.scheduleManage.schedulerJob.scriptName')"
-          />
         </NFormItem>
         <NFormItem :label="$t('page.scheduleManage.schedulerJob.description')" path="description">
           <NInput
@@ -729,46 +790,70 @@ function handleRunLogFilterChange() {
             :placeholder="$t('page.scheduleManage.schedulerJob.description')"
           />
         </NFormItem>
-        <NFormItem :label="$t('page.scheduleManage.schedulerJob.periodType')" path="periodType">
-          <NSelect
-            v-model:value="jobModel.periodType"
-            :options="periodTypeOptions"
-            :placeholder="$t('page.scheduleManage.schedulerJob.periodType')"
-          />
-        </NFormItem>
-        <NFormItem :label="$t('page.scheduleManage.schedulerJob.periodInterval')" path="periodInterval">
-          <NInputNumber
-            v-model:value="jobModel.periodInterval"
-            :min="1"
-            class="w-full"
-            :placeholder="$t('page.scheduleManage.schedulerJob.periodInterval')"
-          />
-        </NFormItem>
-        <NFormItem :label="$t('page.scheduleManage.schedulerJob.logLevel')" path="logLevel">
-          <NSelect
-            v-model:value="jobModel.logLevel"
-            :options="logLevelOptions"
-            :placeholder="$t('page.scheduleManage.schedulerJob.logLevel')"
-          />
-        </NFormItem>
-        <NFormItem :label="$t('page.scheduleManage.schedulerJob.firstRunDate')" path="firstRunDate">
+        <NGrid :cols="2" :x-gap="12">
+          <NFormItemGi :label="$t('page.scheduleManage.schedulerJob.frequency')" path="periodInterval">
+            <NInputNumber v-model:value="jobModel.periodInterval" :min="1" class="w-full">
+              <template #prefix>每</template>
+            </NInputNumber>
+          </NFormItemGi>
+          <NFormItemGi path="periodType" :show-label="false">
+            <NSelect
+              v-model:value="jobModel.periodType"
+              :options="periodTypeOptions"
+              :placeholder="$t('page.scheduleManage.schedulerJob.periodType')"
+            />
+          </NFormItemGi>
+        </NGrid>
+        <NFormItem :label="$t('page.scheduleManage.schedulerJob.firstRunDate')" path="firstRun">
           <NDatePicker
-            v-model:formatted-value="jobModel.firstRunDate"
-            type="date"
+            v-model:formatted-value="jobModel.firstRun"
+            type="datetime"
             clearable
             class="w-full"
-            value-format="yyyy-MM-dd"
+            value-format="yyyy-MM-dd HH:mm:ss"
             :placeholder="$t('page.scheduleManage.schedulerJob.firstRunDate')"
           />
         </NFormItem>
-        <NFormItem :label="$t('page.scheduleManage.schedulerJob.firstRunTime')" path="firstRunTime">
-          <NTimePicker
-            v-model:formatted-value="jobModel.firstRunTime"
-            format="HH:mm:ss"
-            clearable
-            class="w-full"
-            :placeholder="$t('page.scheduleManage.schedulerJob.firstRunTime')"
-          />
+        <NGrid :cols="2" :x-gap="12">
+          <NFormItemGi :label="$t('page.scheduleManage.schedulerJob.scriptName')" path="scriptName">
+            <NSelect
+              v-model:value="jobModel.scriptName"
+              filterable
+              clearable
+              :options="scriptNameOptions"
+              :placeholder="$t('page.scheduleManage.schedulerJob.scriptName')"
+              @update:value="handleScriptChange"
+            />
+          </NFormItemGi>
+          <NFormItemGi :label="$t('page.scheduleManage.schedulerJob.logLevel')" path="logLevel">
+            <NSelect
+              v-model:value="jobModel.logLevel"
+              :options="logLevelOptions"
+              :placeholder="$t('page.scheduleManage.schedulerJob.logLevel')"
+            />
+          </NFormItemGi>
+        </NGrid>
+        <NFormItem
+          v-for="row in jobParamRows"
+          :key="row.param_name"
+          :path="`param_${row.param_name}`"
+          :required="row.mandatory"
+          :label="row.param_name"
+        >
+          <div class="w-full flex-y-center gap-8px">
+            <NInput
+              v-model:value="row.value"
+              clearable
+              class="flex-1"
+              :placeholder="`${row.param_type}${row.mandatory ? '' : ' / ' + $t('page.scheduleManage.scriptManage.optional')}`"
+            />
+            <NTooltip v-if="row.description">
+              <template #trigger>
+                <icon-ic-round-help class="flex-none text-16px" style="color: #f0a020" />
+              </template>
+              {{ row.description }}
+            </NTooltip>
+          </div>
         </NFormItem>
       </NForm>
       <template #footer>

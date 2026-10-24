@@ -64,3 +64,20 @@ export function fetchGetMemberTaskDetail(params: Api.ProjectManage.MemberTaskDet
     params
   });
 }
+
+/** get member's yesterday overdue/completed task list (paginated, from daily snapshot) */
+export function fetchGetMemberYesterdayTaskList(params: Api.ProjectManage.MemberYesterdayTaskListParams) {
+  return request<Api.Common.PaginatingQueryRecord<Api.ProjectManage.MemberTaskDetailRecord>>({
+    url: '/projectManage/taskMonitor/getMemberYesterdayTaskList',
+    method: 'get',
+    params
+  });
+}
+
+/** get task monitor search filter options (teams/executions, loaded once per page init) */
+export function fetchGetTaskMonitorFilterOptions() {
+  return request<Api.ProjectManage.TaskMonitorFilterOptions>({
+    url: '/projectManage/taskMonitor/getFilterOptions',
+    method: 'get'
+  });
+}

@@ -139,8 +139,8 @@ declare namespace Api {
       description: string;
       /** e.g. string / int / float / bool */
       param_type: string;
-      /** true = optional (falls back to default), false = required */
-      optional: boolean;
+      /** true = required, false = optional (falls back to default) */
+      mandatory: boolean;
       /** default value of any type, nullable */
       default?: unknown;
     }
