@@ -48,7 +48,8 @@ export default defineConfig(configEnv => {
       proxy: createViteProxy(viteEnv, enableProxy)
     },
     preview: {
-      port: 9725
+      host: '0.0.0.0',
+      port: 4000
     },
     build: {
       reportCompressedSize: false,

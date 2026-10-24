@@ -223,7 +223,8 @@ const paramRows = ref<ParamEditRow[]>([]);
 const uploadFileList = ref<UploadFileInfo[]>([]);
 
 /** script repo dir (backend convention, repo-relative) */
-const SCRIPT_DIR = 'app/schedule/scripts/';
+
+const SCRIPT_DIR = 'app/schedule/scripts_custom/';
 
 /** derive scriptName / scriptPath from the picked .py file */
 function handleFileChange({ fileList }: { fileList: UploadFileInfo[] }) {
