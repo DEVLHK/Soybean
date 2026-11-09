@@ -158,3 +158,12 @@ export function fetchDeleteScriptInfo(scriptName: string) {
     data: { scriptName }
   });
 }
+
+/** get script file content from the server (by scriptName) */
+export function fetchGetScriptContent(scriptName: string) {
+  return request<{ scriptName: string; content: string }>({
+    url: '/scheduleManage/getScriptContent',
+    method: 'get',
+    params: { scriptName }
+  });
+}

@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref, toRaw, watch } from 'vue';
 import { NButton, NTag, NTooltip } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
+import * as XLSX from 'xlsx';
 import {
   fetchGetMemberTaskDetail,
   fetchGetMemberTaskSummary,
@@ -306,8 +307,8 @@ function handleOverdueChange(value: string) {
 }
 
 /** build the common filter params (null/'' dropped: qs serializes them as empty strings) */
-function buildFilterParams() {
-  const { projectExecutions, members, teams, overdue } = toRaw(appliedFilters.value);
+function buildFilterParams(filters: TaskSearchValues = toRaw(appliedFilters.value)) {
+  const { projectExecutions, members, teams, overdue } = toRaw(filters);
   const { projectIds, executionIds } = splitProjectExecution(projectExecutions);
 
   return {
@@ -475,8 +476,8 @@ const memberDetailPagination = reactive({
   }
 });
 
-/** due-range filter inside the member detail modal: all / overdue / dueToday / notDue */
-type DueRangeFilter = 'all' | 'overdue' | 'dueToday' | 'notDue';
+/** due-range filter inside the member detail modal: all / overdue / dueToday / notDue / holding */
+type DueRangeFilter = 'all' | 'overdue' | 'dueToday' | 'notDue' | 'holding';
 
 const memberDetailDueRange = ref<DueRangeFilter>('all');
 
@@ -484,6 +485,172 @@ function handleMemberDetailDueRange(value: DueRangeFilter) {
   memberDetailDueRange.value = value;
   memberDetailPagination.page = 1;
   loadMemberDetailPage();
+}
+
+/** refresh the member detail modal list (keep current page) and re-count the radio stats */
+async function handleMemberDetailRefresh() {
+  // re-query the member's summary row under the same applied filters so the
+  // 全部/逾期/... counts stay consistent with the summary list scope
+  if (activeSummaryRow.value) {
+    const account = accountOfRow(activeSummaryRow.value);
+    const { projectExecutions, members, teams, overdue, dueDate } = toRaw(appliedFilters.value);
+    const sp = splitProjectExecution(projectExecutions);
+    const { error, data } = await fetchGetMemberTaskSummary({
+      current: 1,
+      pageSize: 1,
+      projectIds: sp.projectIds.length ? sp.projectIds.join(',') : undefined,
+      executionIds: sp.executionIds.length ? sp.executionIds.join(',') : undefined,
+      members: members?.length ? members.join(',') : undefined,
+      teams: teams?.length ? teams.join(',') : undefined,
+      isOverdue: overdue === null ? undefined : overdue === '1',
+      dueDate: dueDate ? formatDate(new Date(dueDate)) : undefined,
+      member: account
+    });
+    if (!error && data?.records?.length) {
+      activeSummaryRow.value = data.records[0];
+    }
+  }
+  loadMemberDetailPage();
+}
+
+/** ---------- excel export (summary + detail, one sheet each) ---------- */
+type ExportScope = 'search' | 'all';
+
+const exporting = ref(false);
+
+const exportScopeOptions = [
+  { label: '导出当前搜索范围', key: 'search' },
+  { label: '导出全部', key: 'all' }
+];
+
+/** fetch every page of a paginated endpoint */
+async function fetchAllRows<T>(
+  fetcher: (p: { current: number; pageSize: number }) => Promise<{
+    error: unknown;
+    data: Api.Common.PaginatingQueryRecord<T> | undefined;
+  }>
+): Promise<T[]> {
+  const pageSize = 500;
+  const first = await fetcher({ current: 1, pageSize });
+  if (first.error || !first.data) {
+    return [];
+  }
+  const rows: T[] = [...first.data.records];
+  const pages = Math.ceil(first.data.total / pageSize);
+  for (let current = 2; current <= pages; current += 1) {
+    const next = await fetcher({ current, pageSize });
+    if (next.error || !next.data) {
+      break;
+    }
+    rows.push(...next.data.records);
+  }
+  return rows;
+}
+
+async function handleExportExcel(scope: ExportScope) {
+  if (exporting.value) {
+    return;
+  }
+  exporting.value = true;
+
+  try {
+    const filters: TaskSearchValues = scope === 'search' ? toRaw(appliedFilters.value) : { ...defaultSearchValues };
+    const sp = splitProjectExecution(filters.projectExecutions);
+
+    const summaryRows = await fetchAllRows(p =>
+      fetchGetMemberTaskSummary({
+        current: p.current,
+        pageSize: p.pageSize,
+        projectIds: sp.projectIds.length ? sp.projectIds.join(',') : undefined,
+        executionIds: sp.executionIds.length ? sp.executionIds.join(',') : undefined,
+        members: filters.members?.length ? filters.members.join(',') : undefined,
+        teams: filters.teams?.length ? filters.teams.join(',') : undefined,
+        isOverdue: filters.overdue === null ? undefined : filters.overdue === '1',
+        dueDate: filters.dueDate ? formatDate(new Date(filters.dueDate)) : undefined
+      })
+    );
+
+    const detailRows = await fetchAllRows(p =>
+      fetchGetMemberTaskDetail({ current: p.current, pageSize: p.pageSize, ...buildFilterParams(filters) })
+    );
+
+    const summaryHeader = [
+      '序号',
+      '成员',
+      '团队',
+      '未完成任务总数',
+      '当前逾期任务数',
+      '今天到期任务',
+      '未到期任务',
+      '当前挂起任务数',
+      '上日逾期任务',
+      '上日完成任务数'
+    ];
+    const summaryAoA: (string | number)[][] = [
+      summaryHeader,
+      ...summaryRows.map((r, i) => [
+        i + 1,
+        r.member,
+        r.team,
+        r.uncompleted,
+        r.overdue,
+        r.dueToday,
+        r.notDue,
+        r.holding,
+        r.dueYesterday,
+        r.completedYesterday
+      ])
+    ];
+
+    const detailHeader = [
+      '序号',
+      '项目编号',
+      '成员',
+      '团队',
+      'ID',
+      '任务类型',
+      '任务来源',
+      '所属执行',
+      '是否逾期',
+      '创建日期',
+      '状态',
+      '最后指派时间',
+      '到期日期'
+    ];
+    const detailAoA: (string | number)[][] = [
+      detailHeader,
+      ...detailRows.map((r, i) => [
+        i + 1,
+        r.projectId,
+        r.member,
+        r.team,
+        r.id,
+        r.taskType,
+        r.taskSource,
+        r.execution,
+        r.isOverdue ? '是' : '否',
+        r.createTime,
+        r.status,
+        r.lastAssignedDate ?? '-',
+        r.dueDate
+      ])
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryAoA);
+    summarySheet['!cols'] = summaryHeader.map(() => ({ wch: 16 }));
+    const detailSheet = XLSX.utils.aoa_to_sheet(detailAoA);
+    detailSheet['!cols'] = detailHeader.map(() => ({ wch: 16 }));
+    XLSX.utils.book_append_sheet(workbook, summarySheet, '汇总列表');
+    XLSX.utils.book_append_sheet(workbook, detailSheet, '明细列表');
+    XLSX.writeFile(workbook, `任务监控_${formatDate(new Date())}.xlsx`);
+  } finally {
+    exporting.value = false;
+  }
+}
+
+function handleExportSelect(key: string) {
+  handleExportExcel(key as ExportScope);
 }
 
 async function loadMemberDetailPage() {
@@ -559,6 +726,15 @@ function buildDetailColumns(sortable: boolean): DataTableColumns<Api.ProjectMana
       render: row => (row.isOverdue ? <NTag type="error">是</NTag> : <NTag type="success">否</NTag>)
     },
     { key: 'createTime', title: '创建日期', align: 'center', width: 180, sorter: sortable },
+    { key: 'status', title: '状态', align: 'center', width: 110, sorter: sortable },
+    {
+      key: 'lastAssignedDate',
+      title: '最后指派时间',
+      align: 'center',
+      width: 160,
+      sorter: sortable,
+      render: row => row.lastAssignedDate ?? '-'
+    },
     { key: 'dueDate', title: '到期日期', align: 'center', width: 120, sorter: sortable }
   ];
 }
@@ -613,6 +789,14 @@ const columns = computed<DataTableColumns<Api.ProjectManage.MemberTaskSummaryRec
     width: 110,
     sorter: true,
     render: row => (row.notDue > 0 ? <NTag type="info">{row.notDue}</NTag> : row.notDue)
+  },
+  {
+    key: 'holding',
+    title: '当前挂起任务数',
+    align: 'center',
+    width: 110,
+    sorter: true,
+    render: row => (row.holding > 0 ? <NTag type="default">{row.holding}</NTag> : row.holding)
   },
   {
     key: 'dueYesterday',
@@ -876,7 +1060,15 @@ onMounted(() => {
         </NCollapse>
       </NCard>
       <NCard :bordered="false" size="small" class="task-monitor-table-card card-wrapper flex-1 min-h-0">
-        <div class="mb-8px flex-y-center justify-end flex-none">
+        <div class="mb-8px flex-y-center justify-end gap-12px flex-none">
+          <NDropdown trigger="click" :options="exportScopeOptions" @select="handleExportSelect">
+            <NButton size="small" type="primary" ghost :loading="exporting">
+              <template #icon>
+                <icon-ic-round-download class="text-icon" />
+              </template>
+              导出Excel
+            </NButton>
+          </NDropdown>
           <NSwitch v-model:value="showSummary" class="view-switch" @update:value="handleSummaryToggle">
             <template #checked>汇总</template>
             <template #unchecked>明细</template>
@@ -929,17 +1121,25 @@ onMounted(() => {
           <NDescriptionsItem label="上日逾期任务">{{ activeSummaryRow.dueYesterday }}</NDescriptionsItem>
           <NDescriptionsItem label="上日完成任务数">{{ activeSummaryRow.completedYesterday }}</NDescriptionsItem>
         </NDescriptions>
-        <NRadioGroup
-          :value="memberDetailDueRange"
-          size="small"
-          class="flex-none"
-          @update:value="handleMemberDetailDueRange"
-        >
-          <NRadioButton value="all">全部({{ activeSummaryRow.uncompleted }})</NRadioButton>
-          <NRadioButton value="overdue">逾期({{ activeSummaryRow.overdue }})</NRadioButton>
-          <NRadioButton value="dueToday">今天到期({{ activeSummaryRow.dueToday }})</NRadioButton>
-          <NRadioButton value="notDue">未到期({{ activeSummaryRow.notDue }})</NRadioButton>
-        </NRadioGroup>
+        <div class="flex-y-center justify-between flex-none">
+          <NRadioGroup :value="memberDetailDueRange" size="small" @update:value="handleMemberDetailDueRange">
+            <NRadioButton value="all">全部({{ activeSummaryRow.uncompleted + activeSummaryRow.holding }})</NRadioButton>
+            <NRadioButton value="overdue">逾期({{ activeSummaryRow.overdue }})</NRadioButton>
+            <NRadioButton value="dueToday">今天到期({{ activeSummaryRow.dueToday }})</NRadioButton>
+            <NRadioButton value="notDue">未到期({{ activeSummaryRow.notDue }})</NRadioButton>
+            <NRadioButton value="holding">挂起({{ activeSummaryRow.holding }})</NRadioButton>
+          </NRadioGroup>
+          <NTooltip>
+            <template #trigger>
+              <NButton size="small" quaternary @click="handleMemberDetailRefresh">
+                <template #icon>
+                  <icon-ic-round-refresh class="text-icon" />
+                </template>
+              </NButton>
+            </template>
+            刷新
+          </NTooltip>
+        </div>
         <NDataTable
           class="flex-1"
           :columns="detailColumns"

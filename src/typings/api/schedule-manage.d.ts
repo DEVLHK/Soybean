@@ -54,6 +54,8 @@ declare namespace Api {
       /** "YYYY-MM-DD HH:mm:ss" */
       updateTime: string;
       updateBy: string;
+      /** script input param values (key = param_name) */
+      params?: Record<string, string> | null;
     }
 
     /** scheduler job run log search params */
@@ -186,6 +188,8 @@ declare namespace Api {
       scriptPath?: string;
       description?: string;
       params?: ScriptParam[];
+      /** modified script file content; omit = backend keeps the file unchanged */
+      content?: string;
     }
   }
 }

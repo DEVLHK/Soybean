@@ -1,5 +1,5 @@
 <script setup lang="tsx">
-import { computed, h, reactive, ref, toRaw } from 'vue';
+import { computed, h, onMounted, reactive, ref, toRaw } from 'vue';
 import type { Component } from 'vue';
 import { NButton, NTag, NTooltip } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
@@ -85,20 +85,13 @@ const columns = computed<ProDataTableColumns<Api.ScheduleManage.SchedulerJobReco
       key: 'jobName',
       title: $t('page.scheduleManage.schedulerJob.jobName'),
       align: 'center',
-      width: 150
+      width: 300
     },
     {
       key: 'scriptName',
       title: $t('page.scheduleManage.schedulerJob.scriptName'),
       align: 'left',
       minWidth: 220,
-      ellipsis: { tooltip: true }
-    },
-    {
-      key: 'description',
-      title: $t('page.scheduleManage.schedulerJob.description'),
-      align: 'left',
-      minWidth: 180,
       ellipsis: { tooltip: true }
     },
     {
@@ -140,6 +133,12 @@ const columns = computed<ProDataTableColumns<Api.ScheduleManage.SchedulerJobReco
       }
     },
     {
+      key: 'updateTime',
+      title: $t('page.scheduleManage.schedulerJob.updateTime'),
+      align: 'center',
+      width: 170
+    },
+    {
       key: 'lastRunStatus',
       title: $t('page.scheduleManage.schedulerJob.lastRunStatus'),
       align: 'center',
@@ -175,18 +174,13 @@ const columns = computed<ProDataTableColumns<Api.ScheduleManage.SchedulerJobReco
         )
     },
     {
-      key: 'updateTime',
-      title: $t('page.scheduleManage.schedulerJob.updateTime'),
-      align: 'center',
-      width: 170
-    },
-    {
       key: 'operate',
       title: $t('common.operate'),
       align: 'center',
       width: 200,
+      fixed: 'right',
       render: row => (
-        <div class="flex-center justify-center gap-4px">
+        <div class="flex-center justify-center gap-2px">
           {renderIconBtn($t('page.scheduleManage.schedulerJob.detail'), IconIcRoundVisibility, () => handleDetail(row))}
           {renderIconBtn($t('common.edit'), IconIcRoundEdit, () => handleEdit(row))}
           {row.enabled === '1'
@@ -217,15 +211,15 @@ const columns = computed<ProDataTableColumns<Api.ScheduleManage.SchedulerJobReco
 
 type IconBtnType = 'primary' | 'success' | 'warning' | 'error' | 'info';
 
-/** icon-only button with tooltip */
+/** icon-only button with tooltip (quaternary: borderless) */
 function renderIconBtn(tooltip: string, icon: Component, onClick: () => void, type: IconBtnType = 'primary') {
   return (
     <NTooltip>
       {{
         default: () => tooltip,
         trigger: () => (
-          <NButton size="small" ghost type={type} onClick={onClick}>
-            {{ icon: () => h(icon) }}
+          <NButton size="tiny" quaternary type={type} style="padding: 0 6px" onClick={onClick}>
+            {{ icon: () => h(icon, { style: 'font-size: 18px' }) }}
           </NButton>
         )
       }}
@@ -250,6 +244,11 @@ const defaultSearchValues: SchedulerJobSearchValues = {
 
 const searchValues = ref<SchedulerJobSearchValues>({ ...defaultSearchValues });
 
+// script name options for the search dropdown (from script_info)
+onMounted(() => {
+  loadScriptNameOptions();
+});
+
 const {
   table: { tableProps },
   pagination,
@@ -273,6 +272,12 @@ function resetSearch() {
 const detailModalVisible = ref(false);
 const detailLoading = ref(false);
 const detailRecord = ref<Api.ScheduleManage.SchedulerJobRecord>();
+
+/** job script params (key/value pairs) for the detail display */
+const detailParams = computed(() => {
+  const entries = Object.entries(detailRecord.value?.params ?? {});
+  return entries.map(([name, value]) => ({ name, value: value === '' ? '-' : String(value) }));
+});
 
 async function handleDetail(row: Api.ScheduleManage.SchedulerJobRecord) {
   detailModalVisible.value = true;
@@ -327,21 +332,29 @@ interface JobParamRow {
 
 const jobParamRows = ref<JobParamRow[]>([]);
 
+/** whether the script param rows are being fetched (modal shows loading meanwhile) */
+const scriptParamLoading = ref(false);
+
 /** when the picked script changes, initialize the param input rows from its definition */
 async function handleScriptChange(scriptName: string | null) {
   jobParamRows.value = [];
   if (!scriptName) {
     return;
   }
-  const { error, data } = await fetchGetScriptInfoDetail(scriptName);
-  if (!error && data) {
-    jobParamRows.value = (data.params ?? []).map(param => ({
-      param_name: param.param_name,
-      description: param.description,
-      param_type: param.param_type,
-      mandatory: param.mandatory,
-      value: param.default === null || param.default === undefined ? '' : String(param.default)
-    }));
+  scriptParamLoading.value = true;
+  try {
+    const { error, data } = await fetchGetScriptInfoDetail(scriptName);
+    if (!error && data) {
+      jobParamRows.value = (data.params ?? []).map(param => ({
+        param_name: param.param_name,
+        description: param.description,
+        param_type: param.param_type,
+        mandatory: param.mandatory,
+        value: param.default === null || param.default === undefined ? '' : String(param.default)
+      }));
+    }
+  } finally {
+    scriptParamLoading.value = false;
   }
 }
 
@@ -374,6 +387,8 @@ const operateModalVisible = ref(false);
 const submitLoading = ref(false);
 /** null = add, number = edit id */
 const editingId = ref<number | null>(null);
+/** false = add, true = edit (derived from editingId) */
+const isEdit = computed(() => editingId.value !== null);
 
 const operateModalTitle = computed(() =>
   editingId.value === null
@@ -410,6 +425,8 @@ function handleAdd() {
   editingId.value = null;
   originalLogLevel.value = null;
   Object.assign(jobModel, createDefaultJobModel());
+  // fresh add: no script picked yet, so no param rows until the script is chosen
+  jobParamRows.value = [];
   loadScriptNameOptions();
   restoreValidation();
   operateModalVisible.value = true;
@@ -430,6 +447,8 @@ function handleEdit(row: Api.ScheduleManage.SchedulerJobRecord) {
       : null
   });
   loadScriptNameOptions();
+  // initialize the param rows right away so they show when the modal opens
+  handleScriptChange(row.scriptName);
   restoreValidation();
   operateModalVisible.value = true;
 }
@@ -614,6 +633,26 @@ function handleViewRunLogContent(row: Api.ScheduleManage.SchedulerJobRunLogRecor
   runLogContentVisible.value = true;
 }
 
+const runLogPagination = reactive({
+  page: 1,
+  pageSize: 10,
+  itemCount: 0,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50, 100],
+  onChange: (page: number) => {
+    runLogPagination.page = page;
+    runLogSearch(
+      { current: runLogPagination.page, pageSize: runLogPagination.pageSize, filters: {}, sorter: null },
+      {}
+    );
+  },
+  onUpdatePageSize: (pageSize: number) => {
+    runLogPagination.pageSize = pageSize;
+    runLogPagination.page = 1;
+    runLogSearch({ current: 1, pageSize: runLogPagination.pageSize, filters: {}, sorter: null }, {});
+  }
+});
+
 async function fetchRunLog(params: any, _values?: Record<string, any>) {
   const { data, error } = await fetchGetSchedulerJobRunLog({
     current: params.current,
@@ -623,9 +662,11 @@ async function fetchRunLog(params: any, _values?: Record<string, any>) {
   });
 
   if (error) {
+    runLogPagination.itemCount = 0;
     return { total: 0, list: [] };
   }
 
+  runLogPagination.itemCount = data.total;
   return { total: data.total, list: data.records };
 }
 
@@ -639,12 +680,15 @@ function handleOpenRunLog(row: Api.ScheduleManage.SchedulerJobRecord) {
   runLogJobId.value = row.id;
   runLogJobName.value = row.jobName;
   runLogStatusFilter.value = null;
+  runLogPagination.page = 1;
+  runLogPagination.pageSize = 10;
   runLogModalVisible.value = true;
-  runLogSearch({ current: 1, pageSize: 10, filters: {}, sorter: null }, {});
+  runLogSearch({ current: 1, pageSize: runLogPagination.pageSize, filters: {}, sorter: null }, {});
 }
 
 function handleRunLogFilterChange() {
-  runLogSearch({ current: 1, pageSize: 10, filters: {}, sorter: null }, {});
+  runLogPagination.page = 1;
+  runLogSearch({ current: 1, pageSize: runLogPagination.pageSize, filters: {}, sorter: null }, {});
 }
 </script>
 
@@ -652,7 +696,7 @@ function handleRunLogFilterChange() {
   <ConfigProvider>
     <div class="h-full flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
       <NCard :bordered="false" size="small" class="card-wrapper">
-        <NCollapse>
+        <NCollapse :default-expanded-names="['scheduler-job-search']">
           <NCollapseItem :title="$t('common.search')" name="scheduler-job-search">
             <NForm :model="searchValues" label-placement="left" :label-width="100">
               <NGrid responsive="screen" item-responsive>
@@ -674,9 +718,11 @@ function handleRunLogFilterChange() {
                   path="scriptName"
                   class="pr-24px"
                 >
-                  <NInput
+                  <NSelect
                     v-model:value="searchValues.scriptName"
+                    filterable
                     clearable
+                    :options="scriptNameOptions"
                     :placeholder="$t('page.scheduleManage.schedulerJob.scriptName')"
                   />
                 </NFormItemGi>
@@ -768,6 +814,14 @@ function handleRunLogFilterChange() {
             {{ detailRecord.updateTime }}
           </NDescriptionsItem>
         </NDescriptions>
+        <template v-if="detailParams.length">
+          <div class="mb-8px text-14px font-medium">脚本入参</div>
+          <NDescriptions bordered :column="1" size="small" label-placement="left">
+            <NDescriptionsItem v-for="p in detailParams" :key="p.name" :label="p.name">
+              {{ p.value }}
+            </NDescriptionsItem>
+          </NDescriptions>
+        </template>
       </NSpin>
     </NModal>
 
@@ -778,45 +832,24 @@ function handleRunLogFilterChange() {
       class="w-800px"
       display-directive="show"
     >
-      <NForm ref="formRef" :model="jobModel" :rules="jobRules" label-placement="left" :label-width="110">
-        <NFormItem :label="$t('page.scheduleManage.schedulerJob.jobName')" path="jobName">
-          <NInput v-model:value="jobModel.jobName" :placeholder="$t('page.scheduleManage.schedulerJob.jobName')" />
-        </NFormItem>
-        <NFormItem :label="$t('page.scheduleManage.schedulerJob.description')" path="description">
-          <NInput
-            v-model:value="jobModel.description"
-            type="textarea"
-            :rows="2"
-            :placeholder="$t('page.scheduleManage.schedulerJob.description')"
-          />
-        </NFormItem>
-        <NGrid :cols="2" :x-gap="12">
-          <NFormItemGi :label="$t('page.scheduleManage.schedulerJob.frequency')" path="periodInterval">
-            <NInputNumber v-model:value="jobModel.periodInterval" :min="1" class="w-full">
-              <template #prefix>每</template>
-            </NInputNumber>
-          </NFormItemGi>
-          <NFormItemGi path="periodType" :show-label="false">
-            <NSelect
-              v-model:value="jobModel.periodType"
-              :options="periodTypeOptions"
-              :placeholder="$t('page.scheduleManage.schedulerJob.periodType')"
+      <NSpin :show="scriptParamLoading">
+        <NForm ref="formRef" :model="jobModel" :rules="jobRules" label-placement="left" :label-width="110">
+          <NFormItem :label="$t('page.scheduleManage.schedulerJob.jobName')" path="jobName">
+            <NInput
+              v-model:value="jobModel.jobName"
+              :disabled="isEdit"
+              :placeholder="$t('page.scheduleManage.schedulerJob.jobName')"
             />
-          </NFormItemGi>
-        </NGrid>
-        <NFormItem :label="$t('page.scheduleManage.schedulerJob.firstRunDate')" path="firstRun">
-          <NDatePicker
-            v-model:formatted-value="jobModel.firstRun"
-            type="datetime"
-            clearable
-            class="w-full"
-            value-format="yyyy-MM-dd HH:mm:ss"
-            :placeholder="$t('page.scheduleManage.schedulerJob.firstRunDate')"
-          />
-        </NFormItem>
-        <NGrid :cols="2" :x-gap="12">
-          <NFormItemGi :label="$t('page.scheduleManage.schedulerJob.scriptName')" path="scriptName">
+          </NFormItem>
+          <NFormItem :label="$t('page.scheduleManage.schedulerJob.scriptName')" path="scriptName">
+            <NInput
+              v-if="isEdit"
+              v-model:value="jobModel.scriptName"
+              disabled
+              :placeholder="$t('page.scheduleManage.schedulerJob.scriptName')"
+            />
             <NSelect
+              v-else
               v-model:value="jobModel.scriptName"
               filterable
               clearable
@@ -824,38 +857,87 @@ function handleRunLogFilterChange() {
               :placeholder="$t('page.scheduleManage.schedulerJob.scriptName')"
               @update:value="handleScriptChange"
             />
-          </NFormItemGi>
-          <NFormItemGi :label="$t('page.scheduleManage.schedulerJob.logLevel')" path="logLevel">
+          </NFormItem>
+          <NGrid :cols="2" :x-gap="12">
+            <NFormItemGi :label="$t('page.scheduleManage.schedulerJob.frequency')" path="periodInterval">
+              <NInputNumber v-model:value="jobModel.periodInterval" :min="1" class="w-full">
+                <template #prefix>每</template>
+              </NInputNumber>
+            </NFormItemGi>
+            <NFormItemGi path="periodType" :show-label="false">
+              <NSelect
+                v-model:value="jobModel.periodType"
+                :options="periodTypeOptions"
+                :placeholder="$t('page.scheduleManage.schedulerJob.periodType')"
+              />
+            </NFormItemGi>
+          </NGrid>
+          <NFormItem :label="$t('page.scheduleManage.schedulerJob.firstRunDate')" path="firstRun">
+            <NDatePicker
+              v-model:formatted-value="jobModel.firstRun"
+              type="datetime"
+              clearable
+              class="w-full"
+              value-format="yyyy-MM-dd HH:mm:ss"
+              :placeholder="$t('page.scheduleManage.schedulerJob.firstRunDate')"
+            />
+          </NFormItem>
+          <NFormItem :label="$t('page.scheduleManage.schedulerJob.logLevel')" path="logLevel" :show-feedback="false">
             <NSelect
               v-model:value="jobModel.logLevel"
               :options="logLevelOptions"
               :placeholder="$t('page.scheduleManage.schedulerJob.logLevel')"
             />
-          </NFormItemGi>
-        </NGrid>
-        <NFormItem
-          v-for="row in jobParamRows"
-          :key="row.param_name"
-          :path="`param_${row.param_name}`"
-          :required="row.mandatory"
-          :label="row.param_name"
-        >
-          <div class="w-full flex-y-center gap-8px">
+          </NFormItem>
+          <NDivider
+            v-if="jobParamRows.length"
+            title-placement="center"
+            class="text-12px text-gray-400"
+            style="margin: 2px 0"
+          >
+            脚本入参
+          </NDivider>
+          <NFormItem
+            v-for="(row, index) in jobParamRows"
+            :key="row.param_name"
+            :path="`param_${row.param_name}`"
+            :required="row.mandatory"
+            :label="row.param_name"
+            :show-feedback="index !== jobParamRows.length - 1"
+          >
+            <div class="w-full flex-y-center gap-8px">
+              <NInput
+                v-model:value="row.value"
+                clearable
+                class="flex-1"
+                :placeholder="`${row.param_type}${row.mandatory ? '' : ' / ' + $t('page.scheduleManage.scriptManage.optional')}`"
+              />
+              <NTooltip v-if="row.description">
+                <template #trigger>
+                  <icon-ic-round-help class="flex-none text-16px" style="color: #f0a020" />
+                </template>
+                {{ row.description }}
+              </NTooltip>
+            </div>
+          </NFormItem>
+          <NDivider
+            v-if="jobParamRows.length"
+            title-placement="center"
+            class="text-12px text-gray-400"
+            style="margin: 2px 0"
+          >
+            脚本入参
+          </NDivider>
+          <NFormItem :label="$t('page.scheduleManage.schedulerJob.description')" path="description">
             <NInput
-              v-model:value="row.value"
-              clearable
-              class="flex-1"
-              :placeholder="`${row.param_type}${row.mandatory ? '' : ' / ' + $t('page.scheduleManage.scriptManage.optional')}`"
+              v-model:value="jobModel.description"
+              type="textarea"
+              :rows="2"
+              :placeholder="$t('page.scheduleManage.schedulerJob.description')"
             />
-            <NTooltip v-if="row.description">
-              <template #trigger>
-                <icon-ic-round-help class="flex-none text-16px" style="color: #f0a020" />
-              </template>
-              {{ row.description }}
-            </NTooltip>
-          </div>
-        </NFormItem>
-      </NForm>
+          </NFormItem>
+        </NForm>
+      </NSpin>
       <template #footer>
         <NSpace justify="end">
           <NButton @click="operateModalVisible = false">{{ $t('common.cancel') }}</NButton>
@@ -886,7 +968,7 @@ function handleRunLogFilterChange() {
         :columns="runLogColumns"
         :data="runLogTableProps.data"
         :loading="runLogTableProps.loading"
-        :pagination="runLogTableProps.pagination"
+        :pagination="runLogPagination"
         remote
         :row-key="(row: Api.ScheduleManage.SchedulerJobRunLogRecord) => row.id"
         size="small"

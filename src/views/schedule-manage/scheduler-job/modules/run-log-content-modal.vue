@@ -146,6 +146,10 @@ function startPolling() {
   if (!props.show) {
     return;
   }
+  // finished runs never grow again: skip polling for success ('1') and failed ('2') records
+  if (props.status === '1' || props.status === '2') {
+    return;
+  }
   pollTimer = setInterval(() => {
     // poll even when hasMoreAfter is false (the file may have grown on the backend),
     // but never before the initial load has set endLine (guards against after=0 requests)

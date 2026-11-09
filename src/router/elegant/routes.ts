@@ -729,6 +729,15 @@ export const generatedRoutes: GeneratedRoute[] = [
         ]
       },
       {
+        name: 'project-manage_project-plan',
+        path: '/project-manage/project-plan',
+        component: 'view.project-manage_project-plan',
+        meta: {
+          title: 'project-manage_project-plan',
+          i18nKey: 'route.project-manage_project-plan'
+        }
+      },
+      {
         name: 'project-manage_task-monitor',
         path: '/project-manage/task-monitor',
         component: 'view.project-manage_task-monitor',

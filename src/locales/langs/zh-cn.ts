@@ -20,6 +20,7 @@ const local: App.I18n.Schema = {
     columnSetting: '列设置',
     config: '配置',
     confirm: '确认',
+    save: '保存',
     delete: '删除',
     deleteSuccess: '删除成功',
     confirmDelete: '确认删除吗？',
@@ -229,6 +230,7 @@ const local: App.I18n.Schema = {
     'project-manage': '项目管理',
     'project-manage_bug-manage': '缺陷管理',
     'project-manage_task-monitor': '成员任务监控',
+    'project-manage_project-plan': '项目主计划',
     'project-manage_bug-manage_failed-bug': '失败缺陷管理',
     'project-manage_bug-manage_bug-review': '待分析失败缺陷',
     'schedule-manage': '定时任务',
@@ -500,8 +502,8 @@ const local: App.I18n.Schema = {
     scheduleManage: {
       schedulerJob: {
         jobName: '任务名称',
-        scriptName: '脚本文件名',
-        description: '脚本描述',
+        scriptName: '脚本名',
+        description: '任务描述',
         period: '执行周期',
         periodType: '周期类型',
         periodInterval: '周期间隔',

@@ -123,6 +123,8 @@ declare namespace Api {
       dueToday: number;
       notDue: number;
       overdue: number;
+      /** 当前挂起任务数 = holding 状态缺陷 + pause 状态任务 */
+      holding: number;
       /** 上一日逾期任务数 */
       dueYesterday: number;
     }
@@ -146,8 +148,8 @@ declare namespace Api {
       /** 到期日期（毫秒时间戳），按天匹配 */
       dueDate?: number | null;
       execution?: string | null;
-      /** 到期范围过滤，口径与汇总 overdue/dueToday/notDue 一致；缺省 all */
-      dueRange?: 'all' | 'overdue' | 'dueToday' | 'notDue' | null;
+      /** 到期范围过滤，口径与汇总 overdue/dueToday/notDue/holding 一致；缺省 all */
+      dueRange?: 'all' | 'overdue' | 'dueToday' | 'notDue' | 'holding' | null;
     }
 
     /** 成员上日逾期/完成任务清单查询参数（读每日快照） */
@@ -203,6 +205,8 @@ declare namespace Api {
       /** "YYYY-MM-DD HH:mm:ss" */
       createTime: string;
       status: string;
+      /** 最后指派时间 "YYYY-MM-DD HH:mm:ss"，无指派记录为 null */
+      lastAssignedDate: string | null;
     }
   }
 }
